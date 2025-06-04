@@ -1,0 +1,214 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Starfield</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            index: -1;
+            width: 100%;
+        }
+        .cabin {
+        	index: 2;
+            position: absolute;
+            top: -80px;
+            height: 110%;
+            width: 100%;
+            min-width: 700px;
+            filter: contrast(1.75);
+            filter: brightness(0.5);
+        }
+        
+        @keyframes ltr-animation {
+    		0% {
+    			transform: translate(-700%);
+			}
+        }
+        
+        @keyframes rtl-animation {
+    		0% {
+    			transform: translate(700%);
+			}
+        }
+
+		.frigate {
+  			index: 3;
+            position: absolute;
+            top: 200px;
+            left: 120%;
+            height: 150px;
+            width: 300px;
+            filter: contrast(1.75);
+            filter: brightness(0.75);
+  			animation-name: ltr-animation;
+  			animation-duration: 25s;
+            animation-iteration-count: infinite;
+            transition: all 3s linear;
+    		transform-origin: 50% 50%;
+    		display: inline-block;
+    		transform: scale(1);
+    		transition: all .2s linear;
+		}
+        
+        .axiom {
+  			index: 1;
+            position: absolute;
+            top: 80px;
+            left: 150%;
+            height: 450px;
+            width: 750px;
+            filter: contrast(1.75);
+            filter: brightness(0.75);
+  			animation-name: ltr-animation;
+  			animation-duration: 95s;
+            animation-iteration-count: infinite;
+            transition: all 3s linear;
+    		transform-origin: 50% 50%;
+    		display: inline-block;
+    		transform: scale(1);
+    		transition: all .2s linear;
+		}
+        
+        .wingship {
+  			index: 4;
+            position: absolute;
+            top: 150px;
+            right: 150%;
+            height: 450px;
+            width: 450px;
+            filter: contrast(1.5);
+            filter: brightness(0.6);
+  			animation-name: rtl-animation;
+  			animation-duration: 40s;
+            animation-iteration-count: infinite;
+            transition: all 3s linear;
+    		transform-origin: 50% 50%;
+    		display: inline-block;
+    		transform: scale(1);
+    		transition: all .2s linear;
+		}
+        
+        .scout {
+  			index: 5;
+            position: absolute;
+            height: 450px;
+            width: 550px;
+            filter: contrast(1.5);
+            filter: brightness(0.6);
+  			animation-name: rtl-animation;
+  			animation-duration: 60s;
+            animation-iteration-count: infinite;
+            transition: all 3s linear;
+    		transform-origin: 50% 50%;
+    		display: inline-block;
+    		transform: scale(1);
+    		transition: all .2s linear;
+		}
+        
+        .destroyer {
+  			index: 2;
+            position: absolute;
+            top: 100px;
+            right: 150%;
+            height: 125px;
+            width: 575px;
+            filter: contrast(1.5);
+            filter: brightness(0.6);
+  			animation-name: rtl-animation;
+  			animation-duration: 75s;
+            animation-iteration-count: infinite;
+            transition: all 3s linear;
+    		transform-origin: 50% 50%;
+    		display: inline-block;
+    		transform: scale(1);
+    		transition: all .2s linear;
+		}
+    </style>
+</head>
+<body>
+<script>
+    var canvas = document.createElement("canvas");
+    var ctx = canvas.getContext("2d");
+    canvas.height = document.documentElement.clientHeight + 250;
+    canvas.width = document.documentElement.clientWidth;
+    document.body.appendChild(canvas);
+
+    var stars = [];
+    var starSpeed = 0.05 * canvas.width;
+    var xv = starSpeed * 0.3;
+    var yv = Math.sqrt(Math.pow(starSpeed, 2) - Math.pow(xv, 2));
+    for (let i = 0; i < 1000; i++) {
+        let speedMult = Math.random() * 3.5 + 0.5;
+        stars[i] = {
+            r: Math.random() * 0.004 * canvas.width / 2,
+            x: Math.floor(Math.random() * canvas.width),
+            y: Math.floor(Math.random() * canvas.height),
+            xv: xv * speedMult,
+            yv: yv * speedMult
+        }
+    }
+
+    var timeDelta, timeLast = 0;
+    requestAnimationFrame(loop);
+
+    function loop(timeNow) {
+
+        timeDelta = timeNow - timeLast;
+        timeLast = timeNow;
+
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = "white";
+        for (let i = 0; i < 1000; i++) {
+            ctx.beginPath();
+            ctx.arc(stars[i].x, stars[i].y, stars[i].r, 0, Math.PI * 2);
+            ctx.fill();
+
+            stars[i].x += stars[i].xv * timeDelta * 0.001;
+
+            if (stars[i].x < 0 - stars[i].r) {
+                stars[i].x = canvas.width + stars[i].r;
+            } else if (stars[i].x > canvas.width + stars[i].r) {
+                stars[i].x = 0 - stars[i].r;
+            }
+
+            stars[i].y += stars[i].yv * timeDelta * 0.000;
+
+            if (stars[i].y < 0 - stars[i].r) {
+                stars[i].y = canvas.height + stars[i].r;
+            } else if (stars[i].y > canvas.height + stars[i].r) {
+                stars[i].y = 0 - stars[i].r;
+            }
+        }
+
+        requestAnimationFrame(loop);
+    }
+
+    function randomSign() {
+        return Math.random() >= 0.5 ? 1 : -1;
+    }
+</script>
+<div class="frigate"><img src="https://tresre.dev/starfield/assets/img/frigate.png" alt="frigate" style="height: 100%; width: 100%; "></div>
+
+<div class="axiom"><img src="https://tresre.dev/starfield/assets/img/axiom.png" alt="axiom" style="height: 100%; width: 100%;"></div>
+
+<div class="wingship"><img src="https://tresre.dev/starfield/assets/img/wingship.png" alt="wingship" style="height: 100%; width: 100%;"></div>
+
+<div class="scout" style="top: 220px; right: 150%;"><img src="https://tresre.dev/starfield/assets/img/scout.png" alt="scout" style="height: 50px; width: 80px;"></div>
+<div class="scout" style="top: 190px; right: 142%;"><img src="https://tresre.dev/starfield/assets/img/scout.png" alt="scout" style="height: 50px; width: 80px; top: 80px;"></div>
+<div class="scout" style="top: 160px; right: 150%;"><img src="https://tresre.dev/starfield/assets/img/scout.png" alt="scout" style="height: 50px; width: 80px;"></div>
+
+<div class="destroyer"><img src="https://tresre.dev/starfield/assets/img/destroyer.png" alt="destroyer" style="height: 100%; width: 100%;"></div>
+
+
+<div class="cabin"><img src="https://tresre.dev/starfield/assets/img/cabin.png" alt="cabin" style="height: 100%; width: 100%;"></div>
+</body>
+</html>
