@@ -1,0 +1,6 @@
+<script>
+  const splitText = (String(window.location.href)).split(":");
+  if (splitText[0] == "http") {
+    window.location.href = ("https:" + splitText[1]);
+  }
+</script>
