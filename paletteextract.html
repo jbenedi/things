@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Palette Extractor</title>
+<script src="https://jbenedict.com/assets/js/jquery.js"></script>
+<script src="https://jbenedict.com/assets/js/main.js" type="text/javascript" defer></script>
+<link rel="stylesheet" media="screen" href="https://jbenedict.com/assets/css/main.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --surface2: #1f1f1f;
+    --border: #2a2a2a;
+    --border2: #333;
+    --text: #e8e8e8;
+    --text2: #888;
+    --text3: #555;
+    --accent: #a30b00;
+    --accent-dim: #8a0900;
+    --radius: 6px;
+    --font-sans: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    padding-top: 115px;
+  }
+
+  header {
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  header h1 { font-size: 15px; font-weight: 500; letter-spacing: 0.02em; }
+  header span { font-size: 12px; color: var(--text3); font-family: var(--font-mono); }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: calc(100vh - 115px - 53px);
+  }
+
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 20px 20px 90px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    max-height: 100%;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+  .drop-zone {
+    border: 1px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    background: var(--surface);
+  }
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(163,11,0,0.04);
+  }
+  .drop-zone input { display: none; }
+  .drop-zone .icon { font-size: 24px; color: var(--text3); margin-bottom: 8px; display: block; }
+  .drop-zone p { color: var(--text2); font-size: 12px; line-height: 1.5; }
+  .drop-zone p strong { color: var(--text); font-weight: 400; }
+
+  .range-group { display: flex; flex-direction: column; gap: 6px; }
+  .range-header { display: flex; justify-content: space-between; align-items: center; }
+  .range-header label { font-size: 12px; color: var(--text2); }
+  .range-val { font-family: var(--font-mono); font-size: 12px; color: var(--accent); min-width: 24px; text-align: right; }
+
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 2px;
+    background: var(--border2); outline: none; border-radius: 2px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 14px; height: 14px;
+    background: var(--accent); border-radius: 50%; cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px;
+    background: var(--accent); border-radius: 50%; cursor: pointer; border: none;
+  }
+
+  /* Palette list in sidebar */
+  .palette-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .palette-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    border-radius: var(--radius);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .palette-item:hover { border-color: var(--border2); }
+
+  .palette-swatch {
+    width: 28px; height: 28px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .palette-hex {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text);
+    flex: 1;
+  }
+
+  .palette-copy {
+    font-size: 10px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+    transition: color 0.15s;
+  }
+  .palette-item:hover .palette-copy { color: var(--accent); }
+
+  .copy-all-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text2);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    padding: 8px 10px;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .copy-all-btn:hover { border-color: var(--border2); color: var(--text); }
+  .copy-all-btn.copied { border-color: var(--accent); color: var(--accent); }
+
+  /* Canvas area */
+  .canvas-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 1px 1px, #1e1e1e 1px, transparent 0);
+    background-size: 24px 24px;
+    padding: 32px 32px calc(70px + 32px) 32px;
+    overflow: hidden;
+    min-width: 0;
+    min-height: 0;
+    gap: 20px;
+  }
+
+  .placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: var(--text3);
+  }
+  .placeholder svg { opacity: 0.2; }
+  .placeholder p { font-size: 13px; text-align: center; line-height: 1.6; }
+
+  .preview-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    max-width: 100%;
+  }
+
+  #previewImg {
+    border-radius: 8px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    max-width: calc(100vw - 280px - 64px);
+    max-height: calc(100vh - 115px - 53px - 70px - 180px);
+    object-fit: contain;
+    display: block;
+  }
+
+  .palette-bar {
+    display: flex;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    height: 48px;
+    width: 100%;
+    max-width: calc(100vw - 280px - 64px);
+  }
+
+  .bar-segment {
+    flex: 1;
+    cursor: pointer;
+    transition: flex 0.2s;
+    position: relative;
+  }
+  .bar-segment:hover { flex: 1.4; }
+
+  .copy-toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 8px 14px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 100;
+  }
+  .copy-toast.show { opacity: 1; }
+
+  .footer { position: fixed; bottom: 0; left: 0; }
+</style>
+</head>
+<body>
+
+<div id="importheader"></div>
+
+<header>
+  <h1>Palette Extractor</h1>
+  <span>Extract dominant color palettes from images</span>
+</header>
+
+<div class="workspace">
+  <div class="sidebar">
+
+    <div>
+      <div class="section-label">Image</div>
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept="image/*">
+        <span class="icon">⬆</span>
+        <p><strong>Drop image here</strong><br>or click to browse</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Colors</div>
+      <div class="range-group">
+        <div class="range-header">
+          <label>Count</label>
+          <span class="range-val" id="countVal">5</span>
+        </div>
+        <input type="range" id="countRange" min="2" max="12" value="5" step="1">
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div id="paletteSection" style="display:none;">
+      <div class="section-label">Extracted Palette</div>
+      <div class="palette-list" id="paletteList"></div>
+      <button class="copy-all-btn" id="copyAllBtn" style="margin-top:8px;">Copy All as HEX</button>
+    </div>
+
+  </div>
+
+  <div class="canvas-area" id="canvasArea">
+    <div class="placeholder" id="placeholder">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="6" y="6" width="52" height="52" rx="4" stroke="#888" stroke-width="1.5"/>
+        <circle cx="20" cy="20" r="5" fill="#555"/>
+        <circle cx="44" cy="20" r="5" fill="#444"/>
+        <circle cx="20" cy="44" r="5" fill="#666"/>
+        <circle cx="44" cy="44" r="5" fill="#333"/>
+        <circle cx="32" cy="32" r="5" fill="#888"/>
+      </svg>
+      <p>Upload an image to extract its palette</p>
+    </div>
+    <div class="preview-wrap" id="previewWrap" style="display:none;">
+      <img id="previewImg" src="" alt="">
+      <div class="palette-bar" id="paletteBar"></div>
+    </div>
+  </div>
+</div>
+
+<div class="copy-toast" id="copyToast"></div>
+
+<script>
+const state = {
+  image: null,
+  count: 5,
+  palette: []
+};
+
+// ── Median cut color quantization ──────────────────────────────────
+
+function extractPalette(imageData, count) {
+  const pixels = [];
+  for (let i = 0; i < imageData.data.length; i += 4) {
+    const a = imageData.data[i + 3];
+    if (a < 128) continue; // skip transparent
+    pixels.push([imageData.data[i], imageData.data[i+1], imageData.data[i+2]]);
+  }
+
+  // Sample down for speed
+  const sample = pixels.filter((_, i) => i % 8 === 0);
+  const buckets = medianCut(sample, count);
+  return buckets.map(bucket => {
+    const avg = averageColor(bucket);
+    return rgbToHex(...avg);
+  });
+}
+
+function medianCut(pixels, depth) {
+  if (depth === 0 || pixels.length === 0) return [pixels];
+
+  const ranges = [0,1,2].map(ch => {
+    const vals = pixels.map(p => p[ch]);
+    return Math.max(...vals) - Math.min(...vals);
+  });
+  const channel = ranges.indexOf(Math.max(...ranges));
+
+  pixels.sort((a, b) => a[channel] - b[channel]);
+  const mid = Math.floor(pixels.length / 2);
+
+  return [
+    ...medianCut(pixels.slice(0, mid), depth - 1),
+    ...medianCut(pixels.slice(mid), depth - 1)
+  ];
+}
+
+function averageColor(pixels) {
+  if (!pixels.length) return [128, 128, 128];
+  const sum = pixels.reduce((acc, p) => [acc[0]+p[0], acc[1]+p[1], acc[2]+p[2]], [0,0,0]);
+  return sum.map(v => Math.round(v / pixels.length));
+}
+
+function rgbToHex(r, g, b) {
+  return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('').toUpperCase();
+}
+
+// ── Render ──────────────────────────────────────────────────────────
+
+function extract() {
+  if (!state.image) return;
+
+  const canvas = document.createElement('canvas');
+  // Downscale for speed
+  const scale = Math.min(1, 200 / Math.max(state.image.naturalWidth, state.image.naturalHeight));
+  canvas.width = Math.round(state.image.naturalWidth * scale);
+  canvas.height = Math.round(state.image.naturalHeight * scale);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(state.image, 0, 0, canvas.width, canvas.height);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+  const depth = Math.ceil(Math.log2(state.count));
+  const hexColors = extractPalette(imageData, depth);
+  // Trim or pad to exact count
+  state.palette = hexColors.slice(0, state.count);
+
+  renderPalette();
+}
+
+function renderPalette() {
+  const palette = state.palette;
+
+  // Bar
+  const bar = document.getElementById('paletteBar');
+  bar.innerHTML = '';
+  palette.forEach(hex => {
+    const seg = document.createElement('div');
+    seg.className = 'bar-segment';
+    seg.style.background = hex;
+    seg.title = hex;
+    seg.addEventListener('click', () => copyHex(hex));
+    bar.appendChild(seg);
+  });
+
+  // Sidebar list
+  const list = document.getElementById('paletteList');
+  list.innerHTML = '';
+  palette.forEach(hex => {
+    const item = document.createElement('div');
+    item.className = 'palette-item';
+    item.addEventListener('click', () => copyHex(hex));
+
+    const swatch = document.createElement('div');
+    swatch.className = 'palette-swatch';
+    swatch.style.background = hex;
+
+    const label = document.createElement('span');
+    label.className = 'palette-hex';
+    label.textContent = hex;
+
+    const copy = document.createElement('span');
+    copy.className = 'palette-copy';
+    copy.textContent = 'copy';
+
+    item.appendChild(swatch);
+    item.appendChild(label);
+    item.appendChild(copy);
+    list.appendChild(item);
+  });
+
+  document.getElementById('paletteSection').style.display = 'block';
+}
+
+function copyHex(hex) {
+  navigator.clipboard.writeText(hex).then(() => {
+    showToast(hex + ' copied!');
+  });
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('copyToast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 1500);
+}
+
+// ── Init ────────────────────────────────────────────────────────────
+
+function init() {
+  const dz = document.getElementById('dropZone');
+  dz.addEventListener('click', () => document.getElementById('fileInput').click());
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) loadFile(file);
+  });
+  document.getElementById('fileInput').addEventListener('change', e => {
+    if (e.target.files[0]) loadFile(e.target.files[0]);
+  });
+
+  document.addEventListener('paste', e => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) { loadFile(item.getAsFile()); break; }
+    }
+  });
+
+  document.getElementById('countRange').addEventListener('input', e => {
+    state.count = parseInt(e.target.value);
+    document.getElementById('countVal').textContent = state.count;
+    if (state.image) extract();
+  });
+
+  document.getElementById('copyAllBtn').addEventListener('click', () => {
+    if (!state.palette.length) return;
+    const text = state.palette.join(' ');
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('copyAllBtn');
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy All as HEX'; btn.classList.remove('copied'); }, 1500);
+    }).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;left:-9999px;top:0;';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('All colors copied!');
+    });
+  });
+
+}
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      state.image = img;
+      document.getElementById('previewImg').src = e.target.result;
+      document.getElementById('placeholder').style.display = 'none';
+      document.getElementById('previewWrap').style.display = 'flex';
+      extract();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+init();
+</script>
+
+<div id="importfooter"></div>
+</body>
+</html>
