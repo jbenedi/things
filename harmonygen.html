@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Harmony Generator</title>
+<script src="https://jbenedict.com/assets/js/jquery.js"></script>
+<script src="https://jbenedict.com/assets/js/main.js" type="text/javascript" defer></script>
+<link rel="stylesheet" media="screen" href="https://jbenedict.com/assets/css/main.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --surface2: #1f1f1f;
+    --border: #2a2a2a;
+    --border2: #333;
+    --text: #e8e8e8;
+    --text2: #888;
+    --text3: #555;
+    --accent: #a30b00;
+    --accent-dim: #8a0900;
+    --radius: 6px;
+    --font-sans: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    padding-top: 115px;
+  }
+
+  header {
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  header h1 { font-size: 15px; font-weight: 500; letter-spacing: 0.02em; }
+  header span { font-size: 12px; color: var(--text3); font-family: var(--font-mono); }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: calc(100vh - 115px - 53px);
+  }
+
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 20px 20px 90px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    max-height: 100%;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+  .color-row { display: flex; align-items: center; gap: 8px; }
+
+  input[type="color"] {
+    -webkit-appearance: none; appearance: none;
+    width: 36px; height: 36px;
+    border: 1px solid var(--border2);
+    border-radius: 6px; cursor: pointer; padding: 3px; background: transparent;
+  }
+  input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+  input[type="color"]::-webkit-color-swatch { border: none; border-radius: 3px; }
+
+  .hex-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 7px 10px;
+    flex: 1;
+    outline: none;
+    transition: border-color 0.2s;
+    text-transform: uppercase;
+  }
+  .hex-input:focus { border-color: var(--border2); }
+
+  .harmony-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .harmony-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text2);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+    width: 100%;
+  }
+  .harmony-btn:hover { border-color: var(--border2); color: var(--text); }
+  .harmony-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(163,11,0,0.06); }
+
+  /* Canvas area */
+  .canvas-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 1px 1px, #1e1e1e 1px, transparent 0);
+    background-size: 24px 24px;
+    padding: 32px 32px calc(70px + 32px) 32px;
+    overflow: hidden;
+    min-width: 0;
+    min-height: 0;
+    gap: 32px;
+  }
+
+  /* Wheel */
+  .wheel-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  #wheelCanvas {
+    border-radius: 50%;
+    display: block;
+  }
+
+  /* Swatches */
+  .swatches-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    max-width: 560px;
+  }
+
+  .swatches-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .swatch-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+
+  .swatch-item:hover .swatch-block { transform: scale(1.05); }
+
+  .swatch-block {
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    transition: transform 0.15s;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .swatch-hex {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text3);
+    text-align: center;
+  }
+
+  .swatch-item.base .swatch-hex { color: var(--accent); }
+
+  .copy-toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 8px 14px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 100;
+  }
+  .copy-toast.show { opacity: 1; }
+
+  .footer { position: fixed; bottom: 0; left: 0; }
+</style>
+</head>
+<body>
+
+<div id="importheader"></div>
+
+<header>
+  <h1>Harmony Generator</h1>
+  <span>Generate color harmonies from a base color</span>
+</header>
+
+<div class="workspace">
+  <div class="sidebar">
+
+    <div>
+      <div class="section-label">Base Color</div>
+      <div class="color-row">
+        <input type="color" id="colorPicker" value="#a30b00">
+        <input type="text" class="hex-input" id="hexInput" value="#A30B00" maxlength="7">
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Harmony Type</div>
+      <div class="harmony-grid">
+        <button class="harmony-btn active" data-harmony="complementary">Complementary</button>
+        <button class="harmony-btn" data-harmony="split">Split Complementary</button>
+        <button class="harmony-btn" data-harmony="triadic">Triadic</button>
+        <button class="harmony-btn" data-harmony="tetradic">Tetradic</button>
+        <button class="harmony-btn" data-harmony="analogous">Analogous</button>
+        <button class="harmony-btn" data-harmony="monochromatic">Monochromatic</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="canvas-area" id="canvasArea">
+    <div class="wheel-wrap">
+      <canvas id="wheelCanvas"></canvas>
+    </div>
+    <div class="swatches-wrap">
+      <div class="swatches-row" id="swatchesRow"></div>
+    </div>
+  </div>
+</div>
+
+<div class="copy-toast" id="copyToast">Copied!</div>
+
+<script>
+const state = {
+  baseHex: '#a30b00',
+  harmony: 'complementary'
+};
+
+// ── Color math ──────────────────────────────────────────────────────
+
+function hexToHsl(hex) {
+  let { r, g, b } = hexToRgb(hex);
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h, s, l = (max + min) / 2;
+  if (max === min) { h = s = 0; }
+  else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  return { h: h * 360, s: s * 100, l: l * 100 };
+}
+
+function hslToHex(h, s, l) {
+  h /= 360; s /= 100; l /= 100;
+  let r, g, b;
+  if (s === 0) { r = g = b = l; }
+  else {
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    const hue2rgb = (p, q, t) => {
+      if (t < 0) t += 1; if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q - p) * 6 * t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    };
+    r = hue2rgb(p, q, h + 1/3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1/3);
+  }
+  return rgbToHex(Math.round(r*255), Math.round(g*255), Math.round(b*255));
+}
+
+function hexToRgb(hex) {
+  hex = hex.replace('#','');
+  if (hex.length === 3) hex = hex.split('').map(c=>c+c).join('');
+  const n = parseInt(hex, 16);
+  return { r: (n>>16)&255, g: (n>>8)&255, b: n&255 };
+}
+
+function rgbToHex(r, g, b) {
+  return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('').toUpperCase();
+}
+
+function rotateHue(hex, deg) {
+  const { h, s, l } = hexToHsl(hex);
+  return hslToHex((h + deg + 360) % 360, s, l);
+}
+
+function getHarmony(hex, type) {
+  const { h, s, l } = hexToHsl(hex);
+  const base = { hex, label: 'Base' };
+
+  switch (type) {
+    case 'complementary':
+      return [base, { hex: rotateHue(hex, 180), label: 'Complement' }];
+
+    case 'split':
+      return [
+        base,
+        { hex: rotateHue(hex, 150), label: 'Split 1' },
+        { hex: rotateHue(hex, 210), label: 'Split 2' }
+      ];
+
+    case 'triadic':
+      return [
+        base,
+        { hex: rotateHue(hex, 120), label: 'Triad 2' },
+        { hex: rotateHue(hex, 240), label: 'Triad 3' }
+      ];
+
+    case 'tetradic':
+      return [
+        base,
+        { hex: rotateHue(hex, 90),  label: 'Tetrad 2' },
+        { hex: rotateHue(hex, 180), label: 'Tetrad 3' },
+        { hex: rotateHue(hex, 270), label: 'Tetrad 4' }
+      ];
+
+    case 'analogous':
+      return [
+        { hex: rotateHue(hex, -40), label: 'Analog 1' },
+        { hex: rotateHue(hex, -20), label: 'Analog 2' },
+        base,
+        { hex: rotateHue(hex,  20), label: 'Analog 3' },
+        { hex: rotateHue(hex,  40), label: 'Analog 4' }
+      ];
+
+    case 'monochromatic':
+      return [
+        { hex: hslToHex(h, s, Math.min(l + 40, 95)), label: 'Light 2' },
+        { hex: hslToHex(h, s, Math.min(l + 20, 95)), label: 'Light 1' },
+        base,
+        { hex: hslToHex(h, s, Math.max(l - 20, 5)), label: 'Dark 1' },
+        { hex: hslToHex(h, s, Math.max(l - 40, 5)), label: 'Dark 2' }
+      ];
+  }
+}
+
+// ── Wheel drawing ───────────────────────────────────────────────────
+
+function drawWheel(colors) {
+  const area = document.getElementById('canvasArea');
+  const size = Math.max(60, Math.min(area.clientWidth - 64, area.clientHeight - 240, 260));
+  const canvas = document.getElementById('wheelCanvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const cx = size / 2, cy = size / 2, r = size / 2 - 2;
+
+  // Draw hue wheel
+  for (let deg = 0; deg < 360; deg++) {
+    const startAngle = (deg - 1) * Math.PI / 180;
+    const endAngle = (deg + 1) * Math.PI / 180;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    grad.addColorStop(0, `hsla(${deg}, 0%, 100%, 1)`);
+    grad.addColorStop(0.4, `hsla(${deg}, 80%, 60%, 1)`);
+    grad.addColorStop(1, `hsla(${deg}, 100%, 40%, 1)`);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, startAngle - Math.PI/2, endAngle - Math.PI/2);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+  }
+
+  // Draw dots for each color
+  colors.forEach((c, i) => {
+    const { h, s, l } = hexToHsl(c.hex);
+    const angle = (h - 90) * Math.PI / 180;
+    const dist = r * 0.72;
+    const x = cx + Math.cos(angle) * dist;
+    const y = cy + Math.sin(angle) * dist;
+    const isBase = c.label === 'Base';
+
+    ctx.beginPath();
+    ctx.arc(x, y, isBase ? 10 : 8, 0, Math.PI * 2);
+    ctx.fillStyle = c.hex;
+    ctx.fill();
+    ctx.strokeStyle = isBase ? '#ffffff' : 'rgba(255,255,255,0.6)';
+    ctx.lineWidth = isBase ? 2.5 : 1.5;
+    ctx.stroke();
+  });
+}
+
+// ── Swatches ────────────────────────────────────────────────────────
+
+function renderSwatches(colors) {
+  const row = document.getElementById('swatchesRow');
+  row.innerHTML = '';
+
+  const swatchSize = Math.min(100, Math.floor((window.innerWidth - 320) / colors.length) - 12);
+
+  colors.forEach(c => {
+    const item = document.createElement('div');
+    item.className = 'swatch-item' + (c.label === 'Base' ? ' base' : '');
+    item.title = 'Click to copy ' + c.hex;
+
+    const block = document.createElement('div');
+    block.className = 'swatch-block';
+    block.style.width = swatchSize + 'px';
+    block.style.height = swatchSize + 'px';
+    block.style.background = c.hex;
+
+    const hexLabel = document.createElement('span');
+    hexLabel.className = 'swatch-hex';
+    hexLabel.textContent = c.hex;
+
+    const nameLabel = document.createElement('span');
+    nameLabel.style.cssText = 'font-size:10px; color:var(--text3); font-family:var(--font-sans);';
+    nameLabel.textContent = c.label;
+
+    item.appendChild(block);
+    item.appendChild(hexLabel);
+    item.appendChild(nameLabel);
+    item.addEventListener('click', () => copyHex(c.hex));
+    row.appendChild(item);
+  });
+}
+
+function copyHex(hex) {
+  navigator.clipboard.writeText(hex).then(() => {
+    const toast = document.getElementById('copyToast');
+    toast.textContent = hex + ' copied!';
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 1500);
+  });
+}
+
+// ── Render ──────────────────────────────────────────────────────────
+
+function render() {
+  const colors = getHarmony(state.baseHex, state.harmony);
+  drawWheel(colors);
+  renderSwatches(colors);
+}
+
+// ── Init ────────────────────────────────────────────────────────────
+
+function init() {
+  document.getElementById('colorPicker').addEventListener('input', e => {
+    state.baseHex = e.target.value;
+    document.getElementById('hexInput').value = e.target.value.toUpperCase();
+    render();
+  });
+
+  document.getElementById('hexInput').addEventListener('input', e => {
+    let v = e.target.value.trim();
+    if (!v.startsWith('#')) v = '#' + v;
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+      state.baseHex = v;
+      document.getElementById('colorPicker').value = v;
+      render();
+    }
+  });
+
+  document.querySelectorAll('.harmony-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.harmony-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.harmony = btn.dataset.harmony;
+      render();
+    });
+  });
+
+  window.addEventListener('resize', render);
+  render();
+}
+
+init();
+</script>
+
+<div id="importfooter"></div>
+</body>
+</html>
