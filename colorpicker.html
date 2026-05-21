@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixel Picker</title>
+<script src="https://jbenedict.com/assets/js/jquery.js"></script>
+<script src="https://jbenedict.com/assets/js/main.js" type="text/javascript" defer></script>
+<link rel="stylesheet" media="screen" href="https://jbenedict.com/assets/css/main.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --surface2: #1f1f1f;
+    --border: #2a2a2a;
+    --border2: #333;
+    --text: #e8e8e8;
+    --text2: #888;
+    --text3: #555;
+    --accent: #a30b00;
+    --accent-dim: #8a0900;
+    --radius: 6px;
+    --font-sans: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    padding-top: 115px;
+  }
+
+  header {
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  header h1 { font-size: 15px; font-weight: 500; letter-spacing: 0.02em; }
+  header span { font-size: 12px; color: var(--text3); font-family: var(--font-mono); }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: calc(100vh - 115px - 53px);
+  }
+
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 20px 20px 90px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    max-height: 100%;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+  .drop-zone {
+    border: 1px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    background: var(--surface);
+  }
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(163,11,0,0.04);
+  }
+  .drop-zone input { display: none; }
+  .drop-zone .icon { font-size: 24px; color: var(--text3); margin-bottom: 8px; display: block; }
+  .drop-zone p { color: var(--text2); font-size: 12px; line-height: 1.5; }
+  .drop-zone p strong { color: var(--text); font-weight: 400; }
+
+  /* Current color display */
+  .color-display {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .big-swatch {
+    width: 100%;
+    height: 80px;
+    border-radius: 8px;
+    border: 1px solid var(--border2);
+    transition: background 0.05s;
+    background: #888888;
+  }
+
+  .color-values {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .value-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .value-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    font-family: var(--font-mono);
+    width: 36px;
+    flex-shrink: 0;
+  }
+
+  .value-text {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text);
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 5px 8px;
+    cursor: text;
+    user-select: all;
+  }
+
+  .copy-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .copy-btn:hover { border-color: var(--border2); color: var(--text); }
+  .copy-btn.copied { border-color: var(--accent); color: var(--accent); }
+
+  /* History */
+  .history-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .history-swatch {
+    width: 32px; height: 32px;
+    border-radius: 5px;
+    border: 1px solid rgba(255,255,255,0.08);
+    cursor: pointer;
+    transition: transform 0.15s;
+    flex-shrink: 0;
+  }
+  .history-swatch:hover { transform: scale(1.15); }
+
+  .clear-btn {
+    background: none;
+    border: none;
+    color: var(--text3);
+    font-size: 11px;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.15s;
+  }
+  .clear-btn:hover { color: var(--accent); }
+
+  .row-between {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  /* Canvas area */
+  .canvas-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 1px 1px, #1e1e1e 1px, transparent 0);
+    background-size: 24px 24px;
+    padding: 32px 32px calc(70px + 32px) 32px;
+    overflow: hidden;
+    min-width: 0;
+    min-height: 0;
+    position: relative;
+  }
+
+  .placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: var(--text3);
+  }
+  .placeholder svg { opacity: 0.2; }
+  .placeholder p { font-size: 13px; text-align: center; line-height: 1.6; }
+
+  .canvas-wrap {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  #mainCanvas {
+    border-radius: 4px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    cursor: crosshair;
+    max-width: calc(100vw - 280px - 64px);
+    max-height: calc(100vh - 115px - 53px - 70px - 96px);
+    display: block;
+  }
+
+  /* Magnifier */
+  .magnifier {
+    position: fixed;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 2px solid var(--border2);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+    pointer-events: none;
+    display: none;
+    overflow: hidden;
+    z-index: 50;
+  }
+
+  .magnifier canvas {
+    display: block;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .magnifier-crosshair {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 10px; height: 10px;
+    border: 1.5px solid rgba(255,255,255,0.8);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .canvas-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .copy-toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 8px 14px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 100;
+  }
+  .copy-toast.show { opacity: 1; }
+
+  .footer { position: fixed; bottom: 0; left: 0; }
+</style>
+</head>
+<body>
+
+<div id="importheader"></div>
+
+<header>
+  <h1>Pixel Picker</h1>
+  <span>Sample colors from any pixel in an image</span>
+</header>
+
+<div class="workspace">
+  <div class="sidebar">
+
+    <div>
+      <div class="section-label">Image</div>
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept="image/*">
+        <span class="icon">⬆</span>
+        <p><strong>Drop image here</strong><br>or click to browse</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="color-display">
+      <div class="section-label">Picked Color</div>
+      <div class="big-swatch" id="bigSwatch"></div>
+      <div class="color-values">
+        <div class="value-row">
+          <span class="value-label">HEX</span>
+          <span class="value-text" id="valHex">—</span>
+          <button class="copy-btn" data-field="hex">Copy</button>
+        </div>
+        <div class="value-row">
+          <span class="value-label">RGB</span>
+          <span class="value-text" id="valRgb">—</span>
+          <button class="copy-btn" data-field="rgb">Copy</button>
+        </div>
+        <div class="value-row">
+          <span class="value-label">HSL</span>
+          <span class="value-text" id="valHsl">—</span>
+          <button class="copy-btn" data-field="hsl">Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="row-between">
+        <div class="section-label" style="margin:0;">History</div>
+        <button class="clear-btn" id="clearBtn">Clear</button>
+      </div>
+      <div class="history-grid" id="historyGrid">
+        <span style="font-size:11px; color:var(--text3);">Click pixels to sample colors</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="canvas-area" id="canvasArea">
+    <div class="placeholder" id="placeholder">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="6" y="6" width="52" height="52" rx="4" stroke="#888" stroke-width="1.5"/>
+        <circle cx="32" cy="32" r="6" stroke="#888" stroke-width="1.5"/>
+        <line x1="32" y1="6" x2="32" y2="20" stroke="#888" stroke-width="1.5"/>
+        <line x1="32" y1="44" x2="32" y2="58" stroke="#888" stroke-width="1.5"/>
+        <line x1="6" y1="32" x2="20" y2="32" stroke="#888" stroke-width="1.5"/>
+        <line x1="44" y1="32" x2="58" y2="32" stroke="#888" stroke-width="1.5"/>
+      </svg>
+      <p>Upload an image to start picking colors</p>
+    </div>
+    <div class="canvas-wrap" id="canvasWrap" style="display:none;">
+      <span class="canvas-meta" id="canvasMeta"></span>
+      <canvas id="mainCanvas"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Magnifier -->
+<div class="magnifier" id="magnifier">
+  <canvas id="magCanvas" width="120" height="120"></canvas>
+  <div class="magnifier-crosshair"></div>
+</div>
+
+<div class="copy-toast" id="copyToast"></div>
+
+<script>
+const state = {
+  image: null,
+  current: null, // { r, g, b, hex, rgb, hsl }
+  history: [],
+  scale: 1, // display scale relative to natural size
+  offsetX: 0,
+  offsetY: 0,
+};
+
+// ── Color math ──────────────────────────────────────────────────────
+
+function rgbToHex(r, g, b) {
+  return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('').toUpperCase();
+}
+
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  let h, s, l = (max + min) / 2;
+  if (max === min) { h = s = 0; }
+  else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch(max) {
+      case r: h = ((g-b)/d + (g<b?6:0))/6; break;
+      case g: h = ((b-r)/d + 2)/6; break;
+      case b: h = ((r-g)/d + 4)/6; break;
+    }
+  }
+  return `hsl(${Math.round(h*360)}, ${Math.round(s*100)}%, ${Math.round(l*100)}%)`;
+}
+
+// ── Load image ──────────────────────────────────────────────────────
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      state.image = img;
+      document.getElementById('placeholder').style.display = 'none';
+      document.getElementById('canvasWrap').style.display = 'flex';
+      setupCanvas();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function setupCanvas() {
+  const canvas = document.getElementById('mainCanvas');
+  const img = state.image;
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+  document.getElementById('canvasMeta').textContent = img.naturalWidth + ' × ' + img.naturalHeight + 'px';
+}
+
+// ── Pixel sampling ──────────────────────────────────────────────────
+
+function samplePixel(canvasX, canvasY) {
+  const canvas = document.getElementById('mainCanvas');
+  const ctx = canvas.getContext('2d');
+
+  // Convert display coords to canvas natural coords
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const px = Math.round(canvasX * scaleX);
+  const py = Math.round(canvasY * scaleY);
+
+  if (px < 0 || py < 0 || px >= canvas.width || py >= canvas.height) return null;
+
+  const data = ctx.getImageData(px, py, 1, 1).data;
+  const r = data[0], g = data[1], b = data[2];
+  const hex = rgbToHex(r, g, b);
+  const rgb = `rgb(${r}, ${g}, ${b})`;
+  const hsl = rgbToHsl(r, g, b);
+  return { r, g, b, hex, rgb, hsl };
+}
+
+function updateSidebar(color) {
+  if (!color) return;
+  state.current = color;
+  document.getElementById('bigSwatch').style.background = color.hex;
+  document.getElementById('valHex').textContent = color.hex;
+  document.getElementById('valRgb').textContent = color.rgb;
+  document.getElementById('valHsl').textContent = color.hsl;
+}
+
+function addToHistory(color) {
+  if (!color) return;
+  // Avoid consecutive duplicates
+  if (state.history.length && state.history[0].hex === color.hex) return;
+  state.history.unshift(color);
+  if (state.history.length > 18) state.history.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  const grid = document.getElementById('historyGrid');
+  if (!state.history.length) {
+    grid.innerHTML = '<span style="font-size:11px; color:var(--text3);">Click pixels to sample colors</span>';
+    return;
+  }
+  grid.innerHTML = '';
+  state.history.forEach(c => {
+    const s = document.createElement('div');
+    s.className = 'history-swatch';
+    s.style.background = c.hex;
+    s.title = c.hex;
+    s.addEventListener('click', () => updateSidebar(c));
+    grid.appendChild(s);
+  });
+}
+
+// ── Magnifier ───────────────────────────────────────────────────────
+
+function updateMagnifier(e, canvasX, canvasY) {
+  const mag = document.getElementById('magnifier');
+  const magCanvas = document.getElementById('magCanvas');
+  const magCtx = magCanvas.getContext('2d');
+  const zoom = 8;
+  const size = 120;
+  const srcSize = size / zoom;
+
+  const canvas = document.getElementById('mainCanvas');
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const px = canvasX * scaleX;
+  const py = canvasY * scaleY;
+
+  magCtx.clearRect(0, 0, size, size);
+  magCtx.imageSmoothingEnabled = false;
+  magCtx.drawImage(
+    canvas,
+    px - srcSize/2, py - srcSize/2, srcSize, srcSize,
+    0, 0, size, size
+  );
+
+  // Position magnifier offset from cursor
+  const offsetX = 20, offsetY = 20;
+  let left = e.clientX + offsetX;
+  let top = e.clientY + offsetY;
+  if (left + size > window.innerWidth - 10) left = e.clientX - size - offsetX;
+  if (top + size > window.innerHeight - 10) top = e.clientY - size - offsetY;
+
+  mag.style.left = left + 'px';
+  mag.style.top = top + 'px';
+  mag.style.display = 'block';
+}
+
+// ── Events ──────────────────────────────────────────────────────────
+
+function init() {
+  const dz = document.getElementById('dropZone');
+  dz.addEventListener('click', () => document.getElementById('fileInput').click());
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) loadFile(file);
+  });
+  document.getElementById('fileInput').addEventListener('change', e => {
+    if (e.target.files[0]) loadFile(e.target.files[0]);
+  });
+
+  document.addEventListener('paste', e => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) { loadFile(item.getAsFile()); break; }
+    }
+  });
+
+  const canvas = document.getElementById('mainCanvas');
+
+  // Mousemove — live preview + magnifier
+  canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const color = samplePixel(x, y);
+    if (color) {
+      updateSidebar(color);
+      updateMagnifier(e, x, y);
+    }
+  });
+
+  // Click — commit to history
+  canvas.addEventListener('click', e => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const color = samplePixel(x, y);
+    if (color) {
+      updateSidebar(color);
+      addToHistory(color);
+    }
+  });
+
+  canvas.addEventListener('mouseleave', () => {
+    document.getElementById('magnifier').style.display = 'none';
+  });
+
+  // Copy buttons
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!state.current) return;
+      const map = { hex: state.current.hex, rgb: state.current.rgb, hsl: state.current.hsl };
+      const text = map[btn.dataset.field];
+      navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+      });
+    });
+  });
+
+  // Clear history
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    state.history = [];
+    renderHistory();
+  });
+}
+
+init();
+</script>
+
+<div id="importfooter"></div>
+</body>
+</html>
