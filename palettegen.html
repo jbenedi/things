@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Palette Generator</title>
+<script src="https://jbenedict.com/assets/js/jquery.js"></script>
+<script src="https://jbenedict.com/assets/js/main.js" type="text/javascript" defer></script>
+<link rel="stylesheet" media="screen" href="https://jbenedict.com/assets/css/main.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --surface2: #1f1f1f;
+    --border: #2a2a2a;
+    --border2: #333;
+    --text: #e8e8e8;
+    --text2: #888;
+    --text3: #555;
+    --accent: #a30b00;
+    --accent-dim: #8a0900;
+    --radius: 6px;
+    --font-sans: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    padding-top: 115px;
+  }
+
+  header {
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  header h1 { font-size: 15px; font-weight: 500; letter-spacing: 0.02em; }
+  header span { font-size: 12px; color: var(--text3); font-family: var(--font-mono); }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: calc(100vh - 115px - 53px);
+  }
+
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 20px 20px 90px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    max-height: 100%;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+  /* Color entries */
+  .color-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .color-entry {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .entry-swatch {
+    width: 28px; height: 28px;
+    border-radius: 4px;
+    border: 1px solid var(--border2);
+    cursor: pointer;
+    flex-shrink: 0;
+    padding: 2px;
+    background: transparent;
+    -webkit-appearance: none; appearance: none;
+  }
+  .entry-swatch::-webkit-color-swatch-wrapper { padding: 0; }
+  .entry-swatch::-webkit-color-swatch { border: none; border-radius: 2px; }
+
+  .entry-hex {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 5px 8px;
+    flex: 1;
+    outline: none;
+    text-transform: uppercase;
+    transition: border-color 0.2s;
+  }
+  .entry-hex:focus { border-color: var(--border2); }
+  .entry-hex.invalid { border-color: var(--accent); }
+
+  .entry-remove {
+    background: none; border: none;
+    color: var(--text3); font-size: 16px;
+    cursor: pointer; padding: 0 2px;
+    line-height: 1; transition: color 0.15s;
+    flex-shrink: 0;
+  }
+  .entry-remove:hover { color: var(--accent); }
+
+  .add-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text2);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    padding: 7px 10px;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .add-btn:hover { border-color: var(--border2); color: var(--text); }
+
+  .copy-all-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text2);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    padding: 8px 10px;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .copy-all-btn:hover { border-color: var(--border2); color: var(--text); }
+  .copy-all-btn.copied { border-color: var(--accent); color: var(--accent); }
+
+  .export-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 16px;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.15s;
+    margin-top: 14px;
+  }
+  .export-btn:hover { background: var(--accent-dim); }
+
+  /* Canvas area */
+  .canvas-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 1px 1px, #1e1e1e 1px, transparent 0);
+    background-size: 24px 24px;
+    padding: 32px 32px calc(70px + 32px) 32px;
+    overflow: hidden;
+    min-width: 0;
+    min-height: 0;
+    gap: 16px;
+  }
+
+  /* Palette preview */
+  .palette-preview {
+    display: flex;
+    width: 100%;
+    max-width: calc(100vw - 280px - 64px);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    height: 200px;
+  }
+
+  .preview-segment {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding-bottom: 14px;
+    gap: 4px;
+    cursor: pointer;
+    transition: flex 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .preview-segment:hover { flex: 1.5; }
+
+  .preview-hex {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    opacity: 0.7;
+    transition: opacity 0.15s;
+    padding: 3px 6px;
+    border-radius: 3px;
+    background: rgba(0,0,0,0.35);
+    color: #fff;
+    white-space: nowrap;
+  }
+
+  .preview-segment:hover .preview-hex { opacity: 1; }
+
+  /* Swatch grid view */
+  .swatch-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    width: 100%;
+    max-width: calc(100vw - 280px - 64px);
+  }
+
+  .swatch-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+  .swatch-card:hover .swatch-block { transform: scale(1.05); }
+
+  .swatch-block {
+    border-radius: 8px;
+    width: 80px; height: 80px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    transition: transform 0.15s;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .swatch-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .view-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 3px;
+    width: 160px;
+  }
+
+  .view-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--text3);
+    font-size: 11px;
+    font-family: var(--font-sans);
+    padding: 4px 0;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .view-tab.active { background: var(--surface); color: var(--text); }
+
+  .copy-toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 8px 14px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 100;
+  }
+  .copy-toast.show { opacity: 1; }
+
+  .footer { position: fixed; bottom: 0; left: 0; }
+</style>
+</head>
+<body>
+
+<div id="importheader"></div>
+
+<header>
+  <h1>Palette Generator</h1>
+  <span>Build and export color palettes from your own colors</span>
+</header>
+
+<div class="workspace">
+  <div class="sidebar">
+
+    <div>
+      <div class="section-label">Colors</div>
+      <div class="color-list" id="colorList"></div>
+      <button class="add-btn" id="addBtn" style="margin-top:8px;">+ Add Color</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <button class="copy-all-btn" id="copyAllBtn">Copy All as HEX</button>
+      <button class="export-btn" id="exportBtn">Download PNG</button>
+    </div>
+
+  </div>
+
+  <div class="canvas-area" id="canvasArea">
+    <div class="view-tabs">
+      <button class="view-tab active" data-view="bar">Bar</button>
+      <button class="view-tab" data-view="swatches">Swatches</button>
+    </div>
+    <div class="palette-preview" id="palettePreview"></div>
+    <div class="swatch-grid" id="swatchGrid" style="display:none;"></div>
+  </div>
+</div>
+
+<div class="copy-toast" id="copyToast"></div>
+
+<script>
+const DEFAULT_COLORS = ['#a30b00','#d64e12','#f5a623','#f8e71c','#7ed321'];
+
+const state = {
+  colors: [...DEFAULT_COLORS],
+  view: 'bar'
+};
+
+function isValidHex(v) {
+  return /^#[0-9a-fA-F]{6}$/.test(v);
+}
+
+function render() {
+  renderSidebar();
+  renderPreview();
+}
+
+function renderSidebar() {
+  const list = document.getElementById('colorList');
+  list.innerHTML = '';
+
+  state.colors.forEach((hex, i) => {
+    const row = document.createElement('div');
+    row.className = 'color-entry';
+
+    const swatch = document.createElement('input');
+    swatch.type = 'color';
+    swatch.className = 'entry-swatch';
+    swatch.value = isValidHex(hex) ? hex : '#888888';
+    swatch.addEventListener('input', e => {
+      state.colors[i] = e.target.value.toUpperCase();
+      const input = row.querySelector('.entry-hex');
+      input.value = state.colors[i];
+      input.classList.remove('invalid');
+      renderPreview();
+    });
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'entry-hex';
+    input.value = hex.toUpperCase();
+    input.maxLength = 7;
+    input.spellcheck = false;
+    input.addEventListener('input', e => {
+      let v = e.target.value.trim();
+      if (!v.startsWith('#')) v = '#' + v;
+      if (isValidHex(v)) {
+        state.colors[i] = v.toUpperCase();
+        swatch.value = v;
+        input.classList.remove('invalid');
+        renderPreview();
+      } else {
+        input.classList.add('invalid');
+      }
+    });
+
+    const rm = document.createElement('button');
+    rm.className = 'entry-remove';
+    rm.textContent = '×';
+    rm.addEventListener('click', () => {
+      if (state.colors.length <= 1) return;
+      state.colors.splice(i, 1);
+      render();
+    });
+
+    row.appendChild(swatch);
+    row.appendChild(input);
+    row.appendChild(rm);
+    list.appendChild(row);
+  });
+}
+
+function renderPreview() {
+  const valid = state.colors.filter(isValidHex);
+  if (!valid.length) return;
+
+  // Bar view
+  const bar = document.getElementById('palettePreview');
+  bar.innerHTML = '';
+  valid.forEach(hex => {
+    const seg = document.createElement('div');
+    seg.className = 'preview-segment';
+    seg.style.background = hex;
+
+    const label = document.createElement('span');
+    label.className = 'preview-hex';
+    label.textContent = hex;
+
+    seg.appendChild(label);
+    seg.addEventListener('click', () => copyHex(hex));
+    bar.appendChild(seg);
+  });
+
+  // Swatch view
+  const grid = document.getElementById('swatchGrid');
+  grid.innerHTML = '';
+  valid.forEach(hex => {
+    const card = document.createElement('div');
+    card.className = 'swatch-card';
+    card.addEventListener('click', () => copyHex(hex));
+
+    const block = document.createElement('div');
+    block.className = 'swatch-block';
+    block.style.background = hex;
+
+    const label = document.createElement('span');
+    label.className = 'swatch-label';
+    label.textContent = hex;
+
+    card.appendChild(block);
+    card.appendChild(label);
+    grid.appendChild(card);
+  });
+}
+
+function copyHex(hex) {
+  navigator.clipboard.writeText(hex).then(() => showToast(hex + ' copied!'));
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('copyToast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 1500);
+}
+
+function exportPNG() {
+  const valid = state.colors.filter(isValidHex);
+  if (!valid.length) return;
+
+  if (state.view === 'bar') {
+    exportBar(valid);
+  } else {
+    exportSwatches(valid);
+  }
+}
+
+function exportBar(valid) {
+  const segW = 300;
+  const totalW = segW * valid.length;
+  const totalH = 500;
+  const labelH = 60;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = totalW;
+  canvas.height = totalH;
+  const ctx = canvas.getContext('2d');
+
+  valid.forEach((hex, i) => {
+    const x = i * segW;
+    ctx.fillStyle = hex;
+    ctx.fillRect(x, 0, segW, totalH - labelH);
+
+    ctx.fillStyle = '#111111';
+    ctx.fillRect(x, totalH - labelH, segW, labelH);
+
+    ctx.fillStyle = '#888888';
+    ctx.font = '500 22px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(hex.toUpperCase(), x + segW / 2, totalH - labelH + 38);
+  });
+
+  download(canvas, 'palette-bar.png');
+}
+
+function exportSwatches(valid) {
+  const swatchW = 300;
+  const swatchH = 300;
+  const padding = 40;
+  const labelH = 50;
+  const cols = Math.min(valid.length, 5);
+  const rows = Math.ceil(valid.length / cols);
+  const canvasW = cols * swatchW + (cols + 1) * padding;
+  const canvasH = rows * (swatchH + labelH) + (rows + 1) * padding;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = canvasW;
+  canvas.height = canvasH;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#111111';
+  ctx.fillRect(0, 0, canvasW, canvasH);
+
+  valid.forEach((hex, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const x = padding + col * (swatchW + padding);
+    const y = padding + row * (swatchH + labelH + padding);
+
+    const r = 16;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + swatchW - r, y);
+    ctx.arcTo(x + swatchW, y, x + swatchW, y + r, r);
+    ctx.lineTo(x + swatchW, y + swatchH - r);
+    ctx.arcTo(x + swatchW, y + swatchH, x + swatchW - r, y + swatchH, r);
+    ctx.lineTo(x + r, y + swatchH);
+    ctx.arcTo(x, y + swatchH, x, y + swatchH - r, r);
+    ctx.lineTo(x, y + r);
+    ctx.arcTo(x, y, x + r, y, r);
+    ctx.closePath();
+    ctx.fillStyle = hex;
+    ctx.fill();
+
+    ctx.fillStyle = '#888888';
+    ctx.font = '500 26px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(hex.toUpperCase(), x + swatchW / 2, y + swatchH + 36);
+  });
+
+  download(canvas, 'palette-swatches.png');
+}
+
+function download(canvas, filename) {
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, 'image/png');
+}
+
+function init() {
+  document.getElementById('addBtn').addEventListener('click', () => {
+    // Pick a random pleasing default
+    const defaults = ['#3a86ff','#8338ec','#ff006e','#fb5607','#06d6a0','#118ab2','#ffd166'];
+    const hex = defaults[state.colors.length % defaults.length];
+    state.colors.push(hex);
+    render();
+  });
+
+  document.getElementById('copyAllBtn').addEventListener('click', () => {
+    const valid = state.colors.filter(isValidHex);
+    if (!valid.length) return;
+    const text = valid.join(' ');
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('copyAllBtn');
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy All as HEX'; btn.classList.remove('copied'); }, 1500);
+    }).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;left:-9999px;top:0;';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('All colors copied!');
+    });
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', exportPNG);
+
+  document.querySelectorAll('.view-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.view-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.view = btn.dataset.view;
+      document.getElementById('palettePreview').style.display = state.view === 'bar' ? 'flex' : 'none';
+      document.getElementById('swatchGrid').style.display = state.view === 'swatches' ? 'flex' : 'none';
+    });
+  });
+
+  render();
+}
+
+init();
+</script>
+
+<div id="importfooter"></div>
+</body>
+</html>
