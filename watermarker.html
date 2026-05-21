@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Watermarker</title>
+<script src="https://jbenedict.com/assets/js/jquery.js"></script>
+<script src="https://jbenedict.com/assets/js/main.js" type="text/javascript" defer></script>
+<link rel="stylesheet" media="screen" href="https://jbenedict.com/assets/css/main.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --surface2: #1f1f1f;
+    --border: #2a2a2a;
+    --border2: #333;
+    --text: #e8e8e8;
+    --text2: #888;
+    --text3: #555;
+    --accent: #a30b00;
+    --accent-dim: #8a0900;
+    --radius: 6px;
+    --font-sans: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    padding-top: 115px;
+  }
+
+  header {
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  header h1 { font-size: 15px; font-weight: 500; letter-spacing: 0.02em; }
+  header span { font-size: 12px; color: var(--text3); font-family: var(--font-mono); }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: calc(100vh - 115px - 53px);
+  }
+
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 20px 20px 90px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    max-height: 100%;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .drop-zone {
+    border: 1px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    background: var(--surface);
+  }
+
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(163, 11, 0, 0.04);
+  }
+
+  .drop-zone input { display: none; }
+  .drop-zone .icon { font-size: 24px; color: var(--text3); margin-bottom: 8px; display: block; }
+  .drop-zone p { color: var(--text2); font-size: 12px; line-height: 1.5; }
+  .drop-zone p strong { color: var(--text); font-weight: 400; }
+
+  .drop-zone.has-file p { color: var(--text); }
+  .drop-zone.has-file { border-color: var(--border2); border-style: solid; }
+
+  .fit-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 3px;
+  }
+
+  .fit-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--text3);
+    font-size: 12px;
+    font-family: var(--font-sans);
+    padding: 5px 0;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .fit-tab.active { background: var(--surface); color: var(--text); }
+
+  .text-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    padding: 8px 10px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .text-input:focus { border-color: var(--border2); }
+
+  .range-group { display: flex; flex-direction: column; gap: 6px; }
+  .range-header { display: flex; justify-content: space-between; align-items: center; }
+  .range-header label { font-size: 12px; color: var(--text2); }
+  .range-val { font-family: var(--font-mono); font-size: 12px; color: var(--accent); min-width: 36px; text-align: right; }
+
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 2px;
+    background: var(--border2); outline: none; border-radius: 2px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 14px; height: 14px;
+    background: var(--accent); border-radius: 50%; cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px;
+    background: var(--accent); border-radius: 50%; cursor: pointer; border: none;
+  }
+
+  .position-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+
+  .pos-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text3);
+    font-size: 16px;
+    padding: 8px 0;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    line-height: 1;
+  }
+
+  .pos-btn:hover { border-color: var(--border2); color: var(--text); }
+  .pos-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(163,11,0,0.06); }
+
+  .color-row { display: flex; align-items: center; gap: 8px; }
+  .color-row label { font-size: 12px; color: var(--text2); }
+
+  input[type="color"] {
+    -webkit-appearance: none; appearance: none;
+    width: 28px; height: 28px;
+    border: 1px solid var(--border2);
+    border-radius: 4px; cursor: pointer; padding: 2px; background: transparent;
+  }
+  input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+  input[type="color"]::-webkit-color-swatch { border: none; border-radius: 2px; }
+
+  .hex-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 5px 8px;
+    width: 88px;
+    outline: none;
+    transition: border-color 0.2s;
+    text-transform: uppercase;
+  }
+
+  .hex-input:focus { border-color: var(--border2); }
+
+  select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    padding: 6px 8px;
+    outline: none;
+    cursor: pointer;
+    width: 100%;
+  }
+
+  .export-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 16px;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.15s;
+    margin-top: 14px;
+  }
+
+  .export-btn:hover { background: var(--accent-dim); }
+  .export-btn:disabled { background: var(--border2); color: var(--text3); cursor: not-allowed; }
+
+  .divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+  .canvas-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 1px 1px, #1e1e1e 1px, transparent 0);
+    background-size: 24px 24px;
+    padding: 32px 32px calc(70px + 32px) 32px;
+    overflow: hidden;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .canvas-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    max-width: 100%;
+    max-height: 100%;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: var(--text3);
+  }
+
+  .placeholder svg { opacity: 0.2; }
+  .placeholder p { font-size: 13px; text-align: center; line-height: 1.6; }
+
+  canvas {
+    border-radius: 4px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    max-width: 100%;
+    max-height: calc(100vh - 115px - 53px - 70px - 96px);
+    width: auto;
+    height: auto;
+    display: block;
+  }
+
+  .canvas-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .footer { position: fixed; bottom: 0; left: 0; }
+</style>
+</head>
+<body>
+
+<div id="importheader"></div>
+
+<header>
+  <h1>Watermarker</h1>
+  <span>Overlay an image watermark onto photos</span>
+</header>
+
+<div class="workspace">
+  <div class="sidebar">
+
+    <div>
+      <div class="section-label">Image</div>
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept="image/*">
+        <span class="icon">⬆</span>
+        <p><strong>Drop image here</strong><br>or click to browse</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Watermark Image</div>
+      <div class="drop-zone" id="wmDropZone">
+        <input type="file" id="wmFileInput" accept="image/*">
+        <span class="icon" style="font-size:18px;">🖼</span>
+        <p><strong>Drop watermark image</strong><br>PNG with transparency works best</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Position</div>
+      <div class="position-grid">
+        <button class="pos-btn" data-pos="tl" title="Top left">↖</button>
+        <button class="pos-btn" data-pos="tc" title="Top center">↑</button>
+        <button class="pos-btn" data-pos="tr" title="Top right">↗</button>
+        <button class="pos-btn" data-pos="ml" title="Middle left">←</button>
+        <button class="pos-btn" data-pos="mc" title="Center">·</button>
+        <button class="pos-btn" data-pos="mr" title="Middle right">→</button>
+        <button class="pos-btn" data-pos="bl" title="Bottom left">↙</button>
+        <button class="pos-btn" data-pos="bc" title="Bottom center">↓</button>
+        <button class="pos-btn active" data-pos="br" title="Bottom right">↘</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="range-group">
+        <div class="range-header">
+          <label>Size</label>
+          <span class="range-val" id="imgSizeVal">20%</span>
+        </div>
+        <input type="range" id="imgSizeRange" min="5" max="80" value="20" step="1">
+      </div>
+
+      <div style="margin-top:12px;">
+        <div class="range-group">
+          <div class="range-header">
+            <label>Opacity</label>
+            <span class="range-val" id="opacityVal">50%</span>
+          </div>
+          <input type="range" id="opacityRange" min="5" max="100" value="50" step="5">
+        </div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <div class="range-group">
+          <div class="range-header">
+            <label>Margin</label>
+            <span class="range-val" id="marginVal">3%</span>
+          </div>
+          <input type="range" id="marginRange" min="0" max="15" value="3" step="0.5">
+        </div>
+      </div>
+
+      <button class="export-btn" style="margin-top:20px;" id="exportBtn" disabled>Download PNG</button>
+    </div>
+
+  </div>
+
+  <div class="canvas-area" id="canvasArea">
+    <div class="placeholder" id="placeholder">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="6" y="12" width="52" height="40" rx="3" stroke="#888" stroke-width="1.5"/>
+        <path d="M6 38 L18 26 L28 36 L38 24 L58 38" stroke="#888" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="14" y="54" font-family="sans-serif" font-size="9" fill="#888">© watermark</text>
+      </svg>
+      <p>Upload an image to add a watermark</p>
+    </div>
+    <div class="canvas-wrap" id="canvasWrap" style="display:none;">
+      <span class="canvas-meta" id="canvasMeta"></span>
+      <canvas id="mainCanvas"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+const state = {
+  image: null,
+  wmImage: null,
+  imgSize: 20,
+  position: 'br',
+  opacity: 0.5,
+  margin: 3,
+};
+
+function init() {
+  // Main image drop
+  const dz = document.getElementById('dropZone');
+  dz.addEventListener('click', () => document.getElementById('fileInput').click());
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) loadMainFile(file);
+  });
+  document.getElementById('fileInput').addEventListener('change', e => {
+    if (e.target.files[0]) loadMainFile(e.target.files[0]);
+  });
+
+  // Watermark image drop
+  const wmDz = document.getElementById('wmDropZone');
+  wmDz.addEventListener('click', () => document.getElementById('wmFileInput').click());
+  wmDz.addEventListener('dragover', e => { e.preventDefault(); wmDz.classList.add('dragover'); });
+  wmDz.addEventListener('dragleave', () => wmDz.classList.remove('dragover'));
+  wmDz.addEventListener('drop', e => {
+    e.preventDefault(); wmDz.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) loadWmFile(file);
+  });
+  document.getElementById('wmFileInput').addEventListener('change', e => {
+    if (e.target.files[0]) loadWmFile(e.target.files[0]);
+  });
+
+  document.getElementById('imgSizeRange').addEventListener('input', e => {
+    state.imgSize = parseInt(e.target.value);
+    document.getElementById('imgSizeVal').textContent = state.imgSize + '%';
+    render();
+  });
+
+  // Position grid
+  document.querySelectorAll('.pos-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.pos-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.position = btn.dataset.pos;
+      render();
+    });
+  });
+
+  document.getElementById('opacityRange').addEventListener('input', e => {
+    state.opacity = parseInt(e.target.value) / 100;
+    document.getElementById('opacityVal').textContent = e.target.value + '%';
+    render();
+  });
+
+  document.getElementById('marginRange').addEventListener('input', e => {
+    state.margin = parseFloat(e.target.value);
+    document.getElementById('marginVal').textContent = state.margin + '%';
+    render();
+  });
+
+  document.addEventListener('paste', e => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) { loadMainFile(item.getAsFile()); break; }
+    }
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', exportImage);
+}
+
+function loadMainFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      state.image = img;
+      document.getElementById('placeholder').style.display = 'none';
+      document.getElementById('canvasWrap').style.display = 'flex';
+      document.getElementById('exportBtn').disabled = false;
+      render();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function loadWmFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      state.wmImage = img;
+      const dz = document.getElementById('wmDropZone');
+      dz.querySelector('p').innerHTML = '<strong>' + file.name + '</strong>';
+      dz.classList.add('has-file');
+      render();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function getWatermarkPosition(canvasW, canvasH, wmW, wmH, margin) {
+  const pos = state.position;
+  const mx = margin;
+  const my = margin;
+  let x, y;
+
+  const hMap = { l: mx, c: (canvasW - wmW) / 2, r: canvasW - wmW - mx };
+  const vMap = { t: my, m: (canvasH - wmH) / 2, b: canvasH - wmH - my };
+
+  x = hMap[pos[1]];
+  y = vMap[pos[0]];
+  return { x, y };
+}
+
+function render() {
+  if (!state.image) return;
+  const canvas = document.getElementById('mainCanvas');
+  const img = state.image;
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext('2d');
+
+  ctx.drawImage(img, 0, 0);
+
+  const marginPx = Math.round(Math.min(canvas.width, canvas.height) * (state.margin / 100));
+  ctx.globalAlpha = state.opacity;
+
+  if (state.wmImage) {
+    const maxDim = Math.min(canvas.width, canvas.height) * (state.imgSize / 100);
+    const scale = Math.min(maxDim / state.wmImage.naturalWidth, maxDim / state.wmImage.naturalHeight);
+    const wmW = Math.round(state.wmImage.naturalWidth * scale);
+    const wmH = Math.round(state.wmImage.naturalHeight * scale);
+    const { x, y } = getWatermarkPosition(canvas.width, canvas.height, wmW, wmH, marginPx);
+    ctx.drawImage(state.wmImage, x, y, wmW, wmH);
+  }
+
+  ctx.globalAlpha = 1;
+
+  // Let CSS max-width/max-height handle scaling down; reset any inline size
+  canvas.style.width = '';
+  canvas.style.height = '';
+
+  document.getElementById('canvasMeta').textContent = canvas.width + ' × ' + canvas.height + 'px';
+}
+
+function exportImage() {
+  const canvas = document.getElementById('mainCanvas');
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'watermarked.png';
+    a.click();
+    URL.revokeObjectURL(url);
+  }, 'image/png');
+}
+
+init();
+</script>
+
+<div id="importfooter"></div>
+</body>
+</html>
