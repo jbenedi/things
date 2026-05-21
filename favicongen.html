@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Favicon Generator</title>
+<script src="https://jbenedict.com/assets/js/jquery.js"></script>
+<script src="https://jbenedict.com/assets/js/main.js" type="text/javascript" defer></script>
+<link rel="stylesheet" media="screen" href="https://jbenedict.com/assets/css/main.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --surface2: #1f1f1f;
+    --border: #2a2a2a;
+    --border2: #333;
+    --text: #e8e8e8;
+    --text2: #888;
+    --text3: #555;
+    --accent: #a30b00;
+    --accent-dim: #8a0900;
+    --radius: 6px;
+    --font-sans: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    padding-top: 115px;
+  }
+
+  header {
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  header h1 { font-size: 15px; font-weight: 500; letter-spacing: 0.02em; }
+  header span { font-size: 12px; color: var(--text3); font-family: var(--font-mono); }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: calc(100vh - 115px - 53px);
+  }
+
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 20px 20px 90px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    max-height: 100%;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+  .drop-zone {
+    border: 1px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    background: var(--surface);
+  }
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(163,11,0,0.04);
+  }
+  .drop-zone input { display: none; }
+  .drop-zone .icon { font-size: 24px; color: var(--text3); margin-bottom: 8px; display: block; }
+  .drop-zone p { color: var(--text2); font-size: 12px; line-height: 1.5; }
+  .drop-zone p strong { color: var(--text); font-weight: 400; }
+
+  .size-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .size-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .size-row:hover { border-color: var(--border2); }
+  .size-row.active { border-color: var(--accent); background: rgba(163,11,0,0.06); }
+
+  .size-thumb {
+    flex-shrink: 0;
+    background: var(--border2);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .size-thumb canvas {
+    display: block;
+    box-shadow: none;
+    border-radius: 0;
+    max-width: none;
+    max-height: none;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .size-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .size-name {
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  .size-row.active .size-name { color: var(--accent); }
+
+  .size-px {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .export-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 16px;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.15s;
+  }
+  .export-btn:hover { background: var(--accent-dim); }
+  .export-btn:disabled { background: var(--border2); color: var(--text3); cursor: not-allowed; }
+
+  /* Canvas area */
+  .canvas-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 1px 1px, #1e1e1e 1px, transparent 0);
+    background-size: 24px 24px;
+    padding: 32px 32px calc(70px + 32px) 32px;
+    overflow: hidden;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: var(--text3);
+  }
+  .placeholder svg { opacity: 0.2; }
+  .placeholder p { font-size: 13px; text-align: center; line-height: 1.6; }
+
+  .preview-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+  }
+
+  /* Big preview of selected size */
+  .preview-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  #previewCanvas {
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    border-radius: 6px;
+    image-rendering: pixelated;
+    /* Scale up small favicons so they're visible */
+  }
+
+  .preview-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  /* Context previews */
+  .context-row {
+    display: flex;
+    gap: 32px;
+    align-items: flex-end;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .context-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .context-label {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+  }
+
+  /* Browser tab mockup */
+  .browser-tab {
+    background: #2a2a2a;
+    border-radius: 6px 6px 0 0;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 160px;
+  }
+
+  .browser-tab img, .browser-tab canvas {
+    width: 16px !important;
+    height: 16px !important;
+    box-shadow: none !important;
+    border-radius: 2px !important;
+    max-width: none !important;
+    max-height: none !important;
+    image-rendering: pixelated;
+    flex-shrink: 0;
+  }
+
+  .tab-title {
+    font-size: 11px;
+    color: var(--text2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Bookmark mockup */
+  .bookmark-bar {
+    background: #1e1e1e;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 5px 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .bookmark-bar canvas {
+    width: 16px !important;
+    height: 16px !important;
+    box-shadow: none !important;
+    border-radius: 2px !important;
+    max-width: none !important;
+    max-height: none !important;
+    image-rendering: pixelated;
+    flex-shrink: 0;
+  }
+
+  .bookmark-text {
+    font-size: 11px;
+    color: var(--text2);
+  }
+
+  /* Home screen mockup */
+  .home-screen-icon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .home-screen-icon canvas {
+    width: 60px !important;
+    height: 60px !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
+    border-radius: 14px !important;
+    max-width: none !important;
+    max-height: none !important;
+    image-rendering: auto;
+    flex-shrink: 0;
+  }
+
+  .home-screen-icon .icon-label {
+    font-size: 11px;
+    color: var(--text2);
+  }
+
+  .footer { position: fixed; bottom: 0; left: 0; }
+</style>
+</head>
+<body>
+
+<div id="importheader"></div>
+
+<header>
+  <h1>Favicon Generator</h1>
+  <span>Resize and export favicon PNGs at common sizes</span>
+</header>
+
+<div class="workspace">
+  <div class="sidebar">
+
+    <div>
+      <div class="section-label">Image</div>
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept="image/*">
+        <span class="icon">⬆</span>
+        <p><strong>Drop image here</strong><br>or click to browse</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Size</div>
+      <div class="size-list" id="sizeList"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <button class="export-btn" id="exportBtn" disabled>Download PNG</button>
+
+  </div>
+
+  <div class="canvas-area" id="canvasArea">
+    <div class="placeholder" id="placeholder">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="8" y="8" width="48" height="48" rx="8" stroke="#888" stroke-width="1.5"/>
+        <rect x="20" y="20" width="24" height="24" rx="4" stroke="#888" stroke-width="1.5"/>
+      </svg>
+      <p>Upload an image to generate favicons</p>
+    </div>
+    <div class="preview-wrap" id="previewWrap" style="display:none;">
+      <div class="preview-box">
+        <canvas id="previewCanvas"></canvas>
+        <span class="preview-label" id="previewLabel"></span>
+      </div>
+      <div class="context-row" id="contextRow"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SIZES = [
+  { name: 'Browser favicon',    px: 16,  context: 'tab' },
+  { name: 'Browser favicon',    px: 32,  context: 'tab' },
+  { name: 'Browser favicon',    px: 48,  context: 'tab' },
+  { name: 'Apple touch icon',   px: 180, context: 'homescreen' },
+  { name: 'Android icon',       px: 192, context: 'homescreen' },
+  { name: 'Android icon',       px: 512, context: 'homescreen' },
+];
+
+const state = {
+  image: null,
+  selectedIndex: 0,
+};
+
+function renderAtSize(img, size) {
+  const c = document.createElement('canvas');
+  c.width = size;
+  c.height = size;
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+
+  // Cover crop — scale to fill, centered
+  const scale = Math.max(size / img.naturalWidth, size / img.naturalHeight);
+  const sw = size / scale;
+  const sh = size / scale;
+  const sx = (img.naturalWidth - sw) / 2;
+  const sy = (img.naturalHeight - sh) / 2;
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, size, size);
+  return c;
+}
+
+function buildSizeList() {
+  const list = document.getElementById('sizeList');
+  list.innerHTML = '';
+
+  SIZES.forEach((s, i) => {
+    const row = document.createElement('div');
+    row.className = 'size-row' + (i === state.selectedIndex ? ' active' : '');
+
+    // Thumb
+    const thumbSize = 36;
+    const thumb = document.createElement('div');
+    thumb.className = 'size-thumb';
+    thumb.style.width = thumbSize + 'px';
+    thumb.style.height = thumbSize + 'px';
+
+    if (state.image) {
+      const tc = renderAtSize(state.image, s.px);
+      tc.style.width = thumbSize + 'px';
+      tc.style.height = thumbSize + 'px';
+      thumb.appendChild(tc);
+    }
+
+    const info = document.createElement('div');
+    info.className = 'size-info';
+
+    const name = document.createElement('span');
+    name.className = 'size-name';
+    name.textContent = s.name;
+
+    const px = document.createElement('span');
+    px.className = 'size-px';
+    px.textContent = s.px + ' × ' + s.px + 'px';
+
+    info.appendChild(name);
+    info.appendChild(px);
+    row.appendChild(thumb);
+    row.appendChild(info);
+
+    row.addEventListener('click', () => {
+      state.selectedIndex = i;
+      buildSizeList();
+      updatePreview();
+    });
+
+    list.appendChild(row);
+  });
+}
+
+function updatePreview() {
+  if (!state.image) return;
+  const s = SIZES[state.selectedIndex];
+  const previewCanvas = document.getElementById('previewCanvas');
+
+  // Render at actual size
+  const rendered = renderAtSize(state.image, s.px);
+
+  previewCanvas.width = s.px;
+  previewCanvas.height = s.px;
+  const ctx = previewCanvas.getContext('2d');
+  ctx.drawImage(rendered, 0, 0);
+
+  // Scale up for display — small sizes get bigger
+  const displaySize = s.px < 64 ? Math.min(256, s.px * Math.floor(256 / s.px)) : Math.min(s.px, 256);
+  previewCanvas.style.width = displaySize + 'px';
+  previewCanvas.style.height = displaySize + 'px';
+
+  document.getElementById('previewLabel').textContent =
+    s.name + ' · ' + s.px + ' × ' + s.px + 'px';
+
+  // Context previews
+  updateContext();
+}
+
+function updateContext() {
+  if (!state.image) return;
+  const row = document.getElementById('contextRow');
+  row.innerHTML = '';
+
+  // Tab preview (16px)
+  const tabItem = document.createElement('div');
+  tabItem.className = 'context-item';
+
+  const tab = document.createElement('div');
+  tab.className = 'browser-tab';
+  const tabCanvas = renderAtSize(state.image, 16);
+  const tabTitle = document.createElement('span');
+  tabTitle.className = 'tab-title';
+  tabTitle.textContent = 'Your Site';
+  tab.appendChild(tabCanvas);
+  tab.appendChild(tabTitle);
+
+  const tabLabel = document.createElement('span');
+  tabLabel.className = 'context-label';
+  tabLabel.textContent = 'Browser tab';
+
+  tabItem.appendChild(tab);
+  tabItem.appendChild(tabLabel);
+  row.appendChild(tabItem);
+
+  // Bookmark preview (16px)
+  const bmItem = document.createElement('div');
+  bmItem.className = 'context-item';
+
+  const bm = document.createElement('div');
+  bm.className = 'bookmark-bar';
+  const bmCanvas = renderAtSize(state.image, 16);
+  const bmText = document.createElement('span');
+  bmText.className = 'bookmark-text';
+  bmText.textContent = 'Your Site';
+  bm.appendChild(bmCanvas);
+  bm.appendChild(bmText);
+
+  const bmLabel = document.createElement('span');
+  bmLabel.className = 'context-label';
+  bmLabel.textContent = 'Bookmark';
+
+  bmItem.appendChild(bm);
+  bmItem.appendChild(bmLabel);
+  row.appendChild(bmItem);
+
+  // Home screen preview (180px)
+  const hsItem = document.createElement('div');
+  hsItem.className = 'context-item';
+
+  const hs = document.createElement('div');
+  hs.className = 'home-screen-icon';
+  const hsCanvas = renderAtSize(state.image, 180);
+  const hsLabel2 = document.createElement('span');
+  hsLabel2.className = 'icon-label';
+  hsLabel2.textContent = 'Your Site';
+  hs.appendChild(hsCanvas);
+  hs.appendChild(hsLabel2);
+
+  const hsLabel = document.createElement('span');
+  hsLabel.className = 'context-label';
+  hsLabel.textContent = 'Home screen';
+
+  hsItem.appendChild(hs);
+  hsItem.appendChild(hsLabel);
+  row.appendChild(hsItem);
+}
+
+function init() {
+  buildSizeList();
+
+  const dz = document.getElementById('dropZone');
+  dz.addEventListener('click', () => document.getElementById('fileInput').click());
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) loadFile(file);
+  });
+  document.getElementById('fileInput').addEventListener('change', e => {
+    if (e.target.files[0]) loadFile(e.target.files[0]);
+  });
+
+  document.addEventListener('paste', e => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) { loadFile(item.getAsFile()); break; }
+    }
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    const s = SIZES[state.selectedIndex];
+    const rendered = renderAtSize(state.image, s.px);
+    rendered.toBlob(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `favicon-${s.px}x${s.px}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }, 'image/png');
+  });
+}
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      state.image = img;
+      document.getElementById('placeholder').style.display = 'none';
+      document.getElementById('previewWrap').style.display = 'flex';
+      document.getElementById('exportBtn').disabled = false;
+      buildSizeList();
+      updatePreview();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+init();
+</script>
+
+<div id="importfooter"></div>
+</body>
+</html>
