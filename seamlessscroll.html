@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seamless Scroll Generator</title>
+<script src="https://jbenedict.com/assets/js/jquery.js"></script>
+<script src="https://jbenedict.com/assets/js/main.js" type="text/javascript" defer></script>
+<link rel="stylesheet" media="screen" href="https://jbenedict.com/assets/css/main.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --surface2: #1f1f1f;
+    --border: #2a2a2a;
+    --border2: #333;
+    --text: #e8e8e8;
+    --text2: #888;
+    --text3: #555;
+    --accent: #a30b00;
+    --accent-dim: #8a0900;
+    --radius: 6px;
+    --font-sans: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    padding-top: 115px;
+  }
+
+  header {
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  header h1 { font-size: 15px; font-weight: 500; letter-spacing: 0.02em; }
+  header span { font-size: 12px; color: var(--text3); font-family: var(--font-mono); }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: calc(100vh - 115px - 53px);
+  }
+
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 20px 20px 90px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    max-height: 100%;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .drop-zone {
+    border: 1px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    background: var(--surface);
+  }
+
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(163, 11, 0, 0.04);
+  }
+
+  .drop-zone input { display: none; }
+  .drop-zone .icon { font-size: 24px; color: var(--text3); margin-bottom: 8px; display: block; }
+  .drop-zone p { color: var(--text2); font-size: 12px; line-height: 1.5; }
+  .drop-zone p strong { color: var(--text); font-weight: 400; }
+
+  .size-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .size-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text2);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 7px 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+
+  .size-btn:hover { border-color: var(--border2); color: var(--text); }
+  .size-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(163,11,0,0.06); }
+
+  .range-group { display: flex; flex-direction: column; gap: 6px; }
+
+  .range-header { display: flex; justify-content: space-between; align-items: center; }
+  .range-header label { font-size: 12px; color: var(--text2); }
+  .range-val { font-family: var(--font-mono); font-size: 12px; color: var(--accent); min-width: 30px; text-align: right; }
+
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 2px;
+    background: var(--border2); outline: none; border-radius: 2px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 14px; height: 14px;
+    background: var(--accent); border-radius: 50%; cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px;
+    background: var(--accent); border-radius: 50%; cursor: pointer; border: none;
+  }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  .info-val {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  .export-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 16px;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.15s;
+  }
+
+  .export-btn:hover { background: var(--accent-dim); }
+  .export-btn:disabled { background: var(--border2); color: var(--text3); cursor: not-allowed; }
+
+  .divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+  /* Canvas area */
+  .canvas-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 1px 1px, #1e1e1e 1px, transparent 0);
+    background-size: 24px 24px;
+    padding: 32px;
+    overflow: hidden;
+    gap: 20px;
+  }
+
+  .placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: var(--text3);
+  }
+
+  .placeholder svg { opacity: 0.2; }
+  .placeholder p { font-size: 13px; text-align: center; line-height: 1.6; }
+
+  .slices-wrap {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    max-width: 100%;
+    max-height: calc(100vh - 220px);
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 8px;
+  }
+
+  .slice-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .slice-item canvas {
+    border-radius: 3px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    display: block;
+  }
+
+  .slice-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text3);
+  }
+
+  .canvas-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text3);
+    text-align: center;
+  }
+
+  .fit-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 3px;
+  }
+
+  .fit-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--text3);
+    font-size: 12px;
+    font-family: var(--font-sans);
+    padding: 5px 0;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .fit-tab.active { background: var(--surface); color: var(--text); }
+
+  .footer { position: fixed; bottom: 0; left: 0; }
+</style>
+</head>
+<body>
+
+<div id="importheader"></div>
+
+<header>
+  <h1>Seamless Scroll Generator</h1>
+  <span>Split images into Instagram carousel slices</span>
+</header>
+
+<div class="workspace">
+  <div class="sidebar">
+
+    <div>
+      <div class="section-label">Image</div>
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept="image/*">
+        <span class="icon">⬆</span>
+        <p><strong>Drop image here</strong><br>or click to browse</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Slice Aspect Ratio</div>
+      <div class="size-grid">
+        <button class="size-btn active" data-ratio="1:1">1:1</button>
+        <button class="size-btn" data-ratio="4:5">4:5</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Number of Slices</div>
+      <div class="range-group">
+        <div class="range-header">
+          <label>Slices</label>
+          <span class="range-val" id="sliceVal">3</span>
+        </div>
+        <input type="range" id="sliceRange" min="2" max="10" value="3" step="1">
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Overflow</div>
+      <div class="fit-tabs">
+        <button class="fit-tab active" data-overflow="crop">Crop</button>
+        <button class="fit-tab" data-overflow="pad">Pad</button>
+      </div>
+      <p style="font-size:11px; color:var(--text3); margin-top:8px; line-height:1.5;">
+        <em>Crop</em> trims the image to fit exactly. <em>Pad</em> adds a background to fill any gap.
+      </p>
+    </div>
+
+    <div class="divider"></div>
+
+    <div id="statsBlock">
+      <div class="section-label">Output Info</div>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <div class="info-row"><span>Slices</span><span class="info-val" id="infoSlices">--</span></div>
+        <div class="info-row"><span>Slice size</span><span class="info-val" id="infoSize">--</span></div>
+        <div class="info-row"><span>Total width</span><span class="info-val" id="infoTotal">--</span></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <button class="export-btn" id="exportBtn" disabled>Download All Slices (.zip)</button>
+
+  </div>
+
+  <div class="canvas-area" id="canvasArea">
+    <div class="placeholder" id="placeholder">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="14" width="16" height="36" rx="2" stroke="#888" stroke-width="1.5"/>
+        <rect x="24" y="14" width="16" height="36" rx="2" stroke="#888" stroke-width="1.5"/>
+        <rect x="44" y="14" width="16" height="36" rx="2" stroke="#888" stroke-width="1.5"/>
+        <line x1="20" y1="32" x2="24" y2="32" stroke="#888" stroke-width="1.5" stroke-dasharray="2 2"/>
+        <line x1="40" y1="32" x2="44" y2="32" stroke="#888" stroke-width="1.5" stroke-dasharray="2 2"/>
+      </svg>
+      <p>Upload an image to split into carousel slices</p>
+    </div>
+    <div id="slicesWrap" style="display:none; flex-direction:column; align-items:center; gap:12px;">
+      <div class="slices-wrap" id="slicesContainer"></div>
+      <span class="canvas-meta" id="canvasMeta"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+const state = {
+  image: null,
+  ratio: '1:1',
+  slices: 3,
+  overflow: 'crop',
+};
+
+function init() {
+  document.querySelectorAll('.size-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.ratio = btn.dataset.ratio;
+      render();
+    });
+  });
+
+  document.getElementById('sliceRange').addEventListener('input', e => {
+    state.slices = parseInt(e.target.value);
+    document.getElementById('sliceVal').textContent = state.slices;
+    render();
+  });
+
+  document.querySelectorAll('.fit-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.fit-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.overflow = btn.dataset.overflow;
+      render();
+    });
+  });
+
+  const dz = document.getElementById('dropZone');
+  dz.addEventListener('click', () => document.getElementById('fileInput').click());
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) loadFile(file);
+  });
+
+  document.getElementById('fileInput').addEventListener('change', e => {
+    if (e.target.files[0]) loadFile(e.target.files[0]);
+  });
+
+  document.addEventListener('paste', e => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) { loadFile(item.getAsFile()); break; }
+    }
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', exportZip);
+}
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      state.image = img;
+      document.getElementById('placeholder').style.display = 'none';
+      document.getElementById('slicesWrap').style.display = 'flex';
+      document.getElementById('exportBtn').disabled = false;
+      render();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function getSliceDimensions() {
+  const img = state.image;
+  const [rw, rh] = state.ratio.split(':').map(Number);
+  // Slice height = image height (always use full image height)
+  const sliceH = img.height;
+  const sliceW = Math.round(sliceH * (rw / rh));
+  const totalW = sliceW * state.slices;
+  return { sliceW, sliceH, totalW };
+}
+
+function render() {
+  if (!state.image) return;
+  const img = state.image;
+  const { sliceW, sliceH, totalW } = getSliceDimensions();
+
+  // Update info
+  document.getElementById('infoSlices').textContent = state.slices;
+  document.getElementById('infoSize').textContent = sliceW + ' × ' + sliceH;
+  document.getElementById('infoTotal').textContent = totalW + ' × ' + sliceH;
+
+  // Build a composited source canvas (image fitted into totalW x sliceH)
+  const srcCanvas = document.createElement('canvas');
+  srcCanvas.width = totalW;
+  srcCanvas.height = sliceH;
+  const srcCtx = srcCanvas.getContext('2d');
+
+  if (state.overflow === 'crop') {
+    // Scale image to cover totalW x sliceH, centered
+    const scale = Math.max(totalW / img.width, sliceH / img.height);
+    const dw = img.width * scale;
+    const dh = img.height * scale;
+    const dx = (totalW - dw) / 2;
+    const dy = (sliceH - dh) / 2;
+    srcCtx.drawImage(img, dx, dy, dw, dh);
+  } else {
+    // Pad: blurred image background, then contain image on top
+    const coverScale = Math.max(totalW / img.width, sliceH / img.height);
+    const bdw = img.width * coverScale;
+    const bdh = img.height * coverScale;
+    const bdx = (totalW - bdw) / 2;
+    const bdy = (sliceH - bdh) / 2;
+    srcCtx.filter = 'blur(28px) brightness(0.7)';
+    srcCtx.drawImage(img, bdx, bdy, bdw, bdh);
+    srcCtx.filter = 'none';
+    const scale = Math.min(totalW / img.width, sliceH / img.height);
+    const dw = img.width * scale;
+    const dh = img.height * scale;
+    const dx = (totalW - dw) / 2;
+    const dy = (sliceH - dh) / 2;
+    srcCtx.drawImage(img, dx, dy, dw, dh);
+  }
+
+  // Render preview slices
+  const container = document.getElementById('slicesContainer');
+  container.innerHTML = '';
+
+  // Calculate preview size so ALL slices fit within the available area
+  const area = document.getElementById('canvasArea');
+  const areaW = area.clientWidth - 64;   // horizontal padding
+  const areaH = area.clientHeight - 80;  // vertical padding + label space
+  const gap = 4 * (state.slices - 1);    // gaps between slices
+
+  // Scale to fit height first, then check if total width fits
+  const scaleByH = (areaH) / sliceH;
+  const totalPreviewW = Math.round(sliceW * scaleByH) * state.slices + gap;
+  let previewH, previewW;
+  if (totalPreviewW <= areaW) {
+    previewH = Math.round(sliceH * scaleByH);
+    previewW = Math.round(sliceW * scaleByH);
+  } else {
+    // Constrain by width instead
+    const availWPerSlice = (areaW - gap) / state.slices;
+    const scaleByW = availWPerSlice / sliceW;
+    previewW = Math.round(sliceW * scaleByW);
+    previewH = Math.round(sliceH * scaleByW);
+  }
+
+  for (let i = 0; i < state.slices; i++) {
+    const item = document.createElement('div');
+    item.className = 'slice-item';
+
+    const c = document.createElement('canvas');
+    c.width = sliceW;
+    c.height = sliceH;
+    c.style.width = previewW + 'px';
+    c.style.height = previewH + 'px';
+    const ctx = c.getContext('2d');
+    ctx.drawImage(srcCanvas, i * sliceW, 0, sliceW, sliceH, 0, 0, sliceW, sliceH);
+
+    const label = document.createElement('span');
+    label.className = 'slice-label';
+    label.textContent = (i + 1) + ' / ' + state.slices;
+
+    item.appendChild(c);
+    item.appendChild(label);
+    container.appendChild(item);
+  }
+
+  document.getElementById('canvasMeta').textContent = state.slices + ' slices';
+
+  // Store source canvas for export
+  state._srcCanvas = srcCanvas;
+  state._sliceW = sliceW;
+  state._sliceH = sliceH;
+}
+
+async function exportZip() {
+  const { _srcCanvas, _sliceW, _sliceH, slices } = state;
+  const zip = new JSZip();
+  const folder = zip.folder('slices');
+  const total = state.slices;
+
+  const promises = [];
+  for (let i = 0; i < total; i++) {
+    const c = document.createElement('canvas');
+    c.width = _sliceW;
+    c.height = _sliceH;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(_srcCanvas, i * _sliceW, 0, _sliceW, _sliceH, 0, 0, _sliceW, _sliceH);
+
+    const p = new Promise(resolve => {
+      c.toBlob(blob => {
+        const num = String(i + 1).padStart(2, '0');
+        folder.file('slice_' + num + '.png', blob);
+        resolve();
+      }, 'image/png');
+    });
+    promises.push(p);
+  }
+
+  await Promise.all(promises);
+
+  const btn = document.getElementById('exportBtn');
+  btn.textContent = 'Preparing...';
+  btn.disabled = true;
+
+  const content = await zip.generateAsync({ type: 'blob' });
+  const url = URL.createObjectURL(content);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'carousel-slices.zip';
+  a.click();
+  URL.revokeObjectURL(url);
+
+  btn.textContent = 'Download All Slices (.zip)';
+  btn.disabled = false;
+}
+
+init();
+</script>
+
+<div id="importfooter"></div>
+</body>
+</html>
