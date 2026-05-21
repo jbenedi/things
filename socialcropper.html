@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Social Media Cropper</title>
+<script src="https://jbenedict.com/assets/js/jquery.js"></script>
+<script src="https://jbenedict.com/assets/js/main.js" type="text/javascript" defer></script>
+<link rel="stylesheet" media="screen" href="https://jbenedict.com/assets/css/main.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --surface2: #1f1f1f;
+    --border: #2a2a2a;
+    --border2: #333;
+    --text: #e8e8e8;
+    --text2: #888;
+    --text3: #555;
+    --accent: #a30b00;
+    --accent-dim: #8a0900;
+    --radius: 6px;
+    --font-sans: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    padding-top: 115px;
+  }
+
+  header {
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  header h1 { font-size: 15px; font-weight: 500; letter-spacing: 0.02em; }
+  header span { font-size: 12px; color: var(--text3); font-family: var(--font-mono); }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: calc(100vh - 115px - 53px);
+  }
+
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 20px 20px 90px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    max-height: 100%;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .drop-zone {
+    border: 1px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    background: var(--surface);
+  }
+
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(163, 11, 0, 0.04);
+  }
+
+  .drop-zone input { display: none; }
+  .drop-zone .icon { font-size: 24px; color: var(--text3); margin-bottom: 8px; display: block; }
+  .drop-zone p { color: var(--text2); font-size: 12px; line-height: 1.5; }
+  .drop-zone p strong { color: var(--text); font-weight: 400; }
+
+  .preset-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .preset-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text2);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+
+  .preset-btn:hover { border-color: var(--border2); color: var(--text); }
+  .preset-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(163,11,0,0.06); }
+
+  .preset-btn .preset-ratio {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .preset-btn.active .preset-ratio { color: var(--accent); opacity: 0.7; }
+
+  .platform-label {
+    font-size: 11px;
+    color: var(--text3);
+    margin-bottom: 6px;
+    margin-top: 4px;
+  }
+
+  .fit-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 3px;
+  }
+
+  .fit-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--text3);
+    font-size: 12px;
+    font-family: var(--font-sans);
+    padding: 5px 0;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .fit-tab.active { background: var(--surface); color: var(--text); }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  .info-val {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  .export-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 16px;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.15s;
+  }
+
+  .export-btn:hover { background: var(--accent-dim); }
+  .export-btn:disabled { background: var(--border2); color: var(--text3); cursor: not-allowed; }
+
+  .divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+  /* Canvas area */
+  .canvas-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 1px 1px, #1e1e1e 1px, transparent 0);
+    background-size: 24px 24px;
+    padding: 32px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: var(--text3);
+  }
+
+  .placeholder svg { opacity: 0.2; }
+  .placeholder p { font-size: 13px; text-align: center; line-height: 1.6; }
+
+  .canvas-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* Crop container with draggable overlay */
+  .crop-container {
+    position: relative;
+    display: inline-block;
+    cursor: crosshair;
+    flex-shrink: 0;
+  }
+
+  .crop-container img {
+    display: block;
+    max-width: 100%;
+    border-radius: 3px;
+    user-select: none;
+    pointer-events: none;
+  }
+
+  .crop-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.55);
+    border-radius: 3px;
+    pointer-events: none;
+  }
+
+  .crop-box {
+    position: absolute;
+    border: 1.5px solid rgba(255,255,255,0.85);
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.55);
+    cursor: move;
+    pointer-events: all;
+  }
+
+  /* Rule-of-thirds grid lines */
+  .crop-box::before, .crop-box::after {
+    content: '';
+    position: absolute;
+    background: rgba(255,255,255,0.15);
+  }
+
+  .crop-box::before {
+    left: 33.33%; width: 1px; top: 0; bottom: 0;
+    box-shadow: calc(33.33% * 1) 0 0 rgba(255,255,255,0.15);
+  }
+
+  .crop-box::after {
+    top: 33.33%; height: 1px; left: 0; right: 0;
+    box-shadow: 0 calc(33.33% * 1) 0 rgba(255,255,255,0.15);
+  }
+
+  .canvas-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .footer { position: fixed; bottom: 0; left: 0; }
+</style>
+</head>
+<body>
+
+<div id="importheader"></div>
+
+<header>
+  <h1>Social Media Cropper</h1>
+  <span>Crop images for Instagram, Bluesky &amp; Threads</span>
+</header>
+
+<div class="workspace">
+  <div class="sidebar">
+
+    <div>
+      <div class="section-label">Image</div>
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept="image/*">
+        <span class="icon">⬆</span>
+        <p><strong>Drop image here</strong><br>or click to browse</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Crop Preset</div>
+
+      <div class="platform-label">Instagram</div>
+      <div class="preset-grid" style="margin-bottom:10px;">
+        <button class="preset-btn active" data-ratio="1:1" data-label="Square">
+          <span>Square</span><span class="preset-ratio">1:1</span>
+        </button>
+        <button class="preset-btn" data-ratio="4:5" data-label="Portrait">
+          <span>Portrait</span><span class="preset-ratio">4:5</span>
+        </button>
+        <button class="preset-btn" data-ratio="1.91:1" data-label="Landscape">
+          <span>Landscape</span><span class="preset-ratio">1.91:1</span>
+        </button>
+        <button class="preset-btn" data-ratio="9:16" data-label="Story / Reel">
+          <span>Story / Reel</span><span class="preset-ratio">9:16</span>
+        </button>
+      </div>
+
+      <div class="platform-label">Bluesky</div>
+      <div class="preset-grid" style="margin-bottom:10px;">
+        <button class="preset-btn" data-ratio="1:1" data-label="Square">
+          <span>Square</span><span class="preset-ratio">1:1</span>
+        </button>
+        <button class="preset-btn" data-ratio="2:1" data-label="Wide">
+          <span>Wide</span><span class="preset-ratio">2:1</span>
+        </button>
+      </div>
+
+      <div class="platform-label">Threads</div>
+      <div class="preset-grid">
+        <button class="preset-btn" data-ratio="1:1" data-label="Square">
+          <span>Square</span><span class="preset-ratio">1:1</span>
+        </button>
+        <button class="preset-btn" data-ratio="4:5" data-label="Portrait">
+          <span>Portrait</span><span class="preset-ratio">4:5</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Output Info</div>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <div class="info-row"><span>Ratio</span><span class="info-val" id="infoRatio">--</span></div>
+        <div class="info-row"><span>Output size</span><span class="info-val" id="infoSize">--</span></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <button class="export-btn" id="exportBtn" disabled>Download PNG</button>
+
+  </div>
+
+  <div class="canvas-area" id="canvasArea">
+    <div class="placeholder" id="placeholder">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="8" y="8" width="48" height="48" rx="3" stroke="#888" stroke-width="1.5"/>
+        <path d="M8 44 L20 30 L30 40 L40 28 L56 44" stroke="#888" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="22" cy="22" r="5" stroke="#888" stroke-width="1.5"/>
+        <rect x="18" y="18" width="28" height="28" rx="2" stroke="#a30b00" stroke-width="1.5" stroke-dasharray="3 2"/>
+      </svg>
+      <p>Upload an image to start cropping</p>
+    </div>
+    <div class="canvas-wrap" id="canvasWrap" style="display:none;">
+      <div class="crop-container" id="cropContainer">
+        <img id="previewImg" src="" alt="">
+        <div class="crop-box" id="cropBox"></div>
+      </div>
+      <span class="canvas-meta" id="canvasMeta"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+const state = {
+  image: null,
+  naturalW: 0,
+  naturalH: 0,
+  displayW: 0,
+  displayH: 0,
+  ratio: 1,        // w/h
+  ratioLabel: '1:1',
+  // Crop box in display coords
+  cropX: 0,
+  cropY: 0,
+  cropW: 0,
+  cropH: 0,
+  dragging: false,
+  dragStartX: 0,
+  dragStartY: 0,
+  dragStartCropX: 0,
+  dragStartCropY: 0,
+};
+
+const MAX_PREVIEW = 680;
+
+function init() {
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const [rw, rh] = btn.dataset.ratio.split(':').map(Number);
+      state.ratio = rw / rh;
+      state.ratioLabel = btn.dataset.ratio;
+      if (state.image) resetCrop();
+    });
+  });
+
+  const dz = document.getElementById('dropZone');
+  dz.addEventListener('click', () => document.getElementById('fileInput').click());
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) loadFile(file);
+  });
+
+  document.getElementById('fileInput').addEventListener('change', e => {
+    if (e.target.files[0]) loadFile(e.target.files[0]);
+  });
+
+  document.addEventListener('paste', e => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) { loadFile(item.getAsFile()); break; }
+    }
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', exportCrop);
+
+  // Drag to reposition crop box
+  const cropBox = document.getElementById('cropBox');
+  cropBox.addEventListener('mousedown', startDrag);
+  cropBox.addEventListener('touchstart', startDrag, { passive: false });
+  document.addEventListener('mousemove', onDrag);
+  document.addEventListener('touchmove', onDrag, { passive: false });
+  document.addEventListener('mouseup', endDrag);
+  document.addEventListener('touchend', endDrag);
+
+  // Click on container to center crop
+  document.getElementById('cropContainer').addEventListener('mousedown', e => {
+    if (e.target === document.getElementById('cropBox')) return;
+    const rect = document.getElementById('cropContainer').getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    state.cropX = Math.max(0, Math.min(state.displayW - state.cropW, x - state.cropW / 2));
+    state.cropY = Math.max(0, Math.min(state.displayH - state.cropH, y - state.cropH / 2));
+    updateCropBox();
+    updateInfo();
+  });
+}
+
+function startDrag(e) {
+  e.preventDefault();
+  state.dragging = true;
+  const pt = e.touches ? e.touches[0] : e;
+  state.dragStartX = pt.clientX;
+  state.dragStartY = pt.clientY;
+  state.dragStartCropX = state.cropX;
+  state.dragStartCropY = state.cropY;
+}
+
+function onDrag(e) {
+  if (!state.dragging) return;
+  e.preventDefault();
+  const pt = e.touches ? e.touches[0] : e;
+  const dx = pt.clientX - state.dragStartX;
+  const dy = pt.clientY - state.dragStartY;
+  state.cropX = Math.max(0, Math.min(state.displayW - state.cropW, state.dragStartCropX + dx));
+  state.cropY = Math.max(0, Math.min(state.displayH - state.cropH, state.dragStartCropY + dy));
+  updateCropBox();
+  updateInfo();
+}
+
+function endDrag() { state.dragging = false; }
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      state.image = img;
+      state.naturalW = img.naturalWidth;
+      state.naturalH = img.naturalHeight;
+
+      // Set display size
+      const area = document.getElementById('canvasArea');
+      const maxW = area.clientWidth - 64;
+      const maxH = area.clientHeight - 80;
+      const scale = Math.min(1, maxW / img.naturalWidth, maxH / img.naturalHeight, MAX_PREVIEW / Math.max(img.naturalWidth, img.naturalHeight));
+      state.displayW = Math.round(img.naturalWidth * scale);
+      state.displayH = Math.round(img.naturalHeight * scale);
+
+      const previewImg = document.getElementById('previewImg');
+      previewImg.src = e.target.result;
+      previewImg.style.width = state.displayW + 'px';
+      previewImg.style.height = state.displayH + 'px';
+
+      document.getElementById('placeholder').style.display = 'none';
+      document.getElementById('canvasWrap').style.display = 'flex';
+      document.getElementById('exportBtn').disabled = false;
+
+      resetCrop();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function resetCrop() {
+  const { displayW, displayH, ratio } = state;
+  // Fit crop box to image, respecting ratio
+  let cropW, cropH;
+  if (displayW / displayH >= ratio) {
+    cropH = displayH;
+    cropW = Math.round(cropH * ratio);
+  } else {
+    cropW = displayW;
+    cropH = Math.round(cropW / ratio);
+  }
+  state.cropW = cropW;
+  state.cropH = cropH;
+  state.cropX = Math.round((displayW - cropW) / 2);
+  state.cropY = Math.round((displayH - cropH) / 2);
+  updateCropBox();
+  updateInfo();
+}
+
+function updateCropBox() {
+  const box = document.getElementById('cropBox');
+  box.style.left = state.cropX + 'px';
+  box.style.top = state.cropY + 'px';
+  box.style.width = state.cropW + 'px';
+  box.style.height = state.cropH + 'px';
+}
+
+function updateInfo() {
+  const scale = state.naturalW / state.displayW;
+  const outW = Math.round(state.cropW * scale);
+  const outH = Math.round(state.cropH * scale);
+  document.getElementById('infoRatio').textContent = state.ratioLabel;
+  document.getElementById('infoSize').textContent = outW + ' × ' + outH;
+  document.getElementById('canvasMeta').textContent = 'Drag to reposition · ' + state.ratioLabel;
+}
+
+function exportCrop() {
+  const scale = state.naturalW / state.displayW;
+  const sx = Math.round(state.cropX * scale);
+  const sy = Math.round(state.cropY * scale);
+  const sw = Math.round(state.cropW * scale);
+  const sh = Math.round(state.cropH * scale);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = sw;
+  canvas.height = sh;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(state.image, sx, sy, sw, sh, 0, 0, sw, sh);
+
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'crop-' + state.ratioLabel.replace(':', 'x') + '.png';
+    a.click();
+    URL.revokeObjectURL(url);
+  }, 'image/png');
+}
+
+init();
+</script>
+
+<div id="importfooter"></div>
+</body>
+</html>
