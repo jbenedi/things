@@ -62,16 +62,17 @@
   .workspace {
     display: grid;
     grid-template-columns: 280px 1fr;
-    height: calc(100vh - 53px);
+    height: calc(100vh - 115px - 53px);
   }
 
   .sidebar {
     border-right: 1px solid var(--border);
-    padding: 20px;
+    padding: 20px 20px 90px 20px;
     display: flex;
     flex-direction: column;
     gap: 20px;
     overflow-y: auto;
+    max-height: 100%;
   }
 
   .section-label {
@@ -443,7 +444,7 @@
 
 <header>
   <h1>Matte Generator</h1>
-  <span>Place images on a square canvas</span>
+  <span>Place images on a matted canvas</span>
 </header>
 
 <div class="workspace">
@@ -461,27 +462,31 @@
     <div class="divider"></div>
 
     <div>
-      <div class="section-label">Canvas Size</div>
+      <div class="section-label">Aspect Ratio</div>
       <div class="size-grid">
-        <button class="size-btn active" data-size="1080">1080</button>
-        <button class="size-btn" data-size="1200">1200</button>
-        <button class="size-btn" data-size="2048">2048</button>
-        <button class="size-btn" data-size="custom">Custom</button>
-      </div>
-      <div class="custom-size" id="customSizeRow" style="margin-top:8px; display:none;">
-        <input type="number" id="customSize" value="1080" min="100" max="8000" placeholder="px">
-        <span>px</span>
+        <button class="size-btn active" data-ratio="1:1">1:1</button>
+        <button class="size-btn" data-ratio="4:5">4:5</button>
+        <button class="size-btn" data-ratio="3:4">3:4</button>
+        <button class="size-btn" data-ratio="9:16">9:16</button>
       </div>
     </div>
 
     <div class="divider"></div>
 
     <div>
-      <div class="section-label">Image Fit</div>
-      <div class="fit-tabs">
-        <button class="fit-tab active" data-fit="contain">Contain</button>
-        <button class="fit-tab" data-fit="cover">Cover</button>
-        <button class="fit-tab" data-fit="actual">Actual</button>
+      <div class="section-label">Background</div>
+      <div class="fit-tabs" style="margin-bottom:12px;">
+        <button class="fit-tab active" data-bg="color">Colour</button>
+        <button class="fit-tab" data-bg="blur">Blurred Image</button>
+      </div>
+      <div id="colorControls">
+        <div class="color-row" style="margin-bottom:10px;">
+          <div class="color-swatch-wrap">
+            <input type="color" id="bgColor" value="#ffffff">
+            <input type="text" class="hex-input" id="hexInput" value="#FFFFFF" maxlength="7">
+          </div>
+        </div>
+        <div class="presets" id="presets"></div>
       </div>
     </div>
 
@@ -496,19 +501,6 @@
         </div>
         <input type="range" id="paddingRange" min="0" max="25" value="5" step="1">
       </div>
-    </div>
-
-    <div class="divider"></div>
-
-    <div>
-      <div class="section-label">Background</div>
-      <div class="color-row" style="margin-bottom:10px;">
-        <div class="color-swatch-wrap">
-          <input type="color" id="bgColor" value="#ffffff">
-          <input type="text" class="hex-input" id="hexInput" value="#FFFFFF" maxlength="7">
-        </div>
-      </div>
-      <div class="presets" id="presets"></div>
       <button class="export-btn" style="margin-top:14px;" id="exportBtn" disabled>Download PNG</button>
     </div>
 
@@ -534,8 +526,8 @@
 <script>
 const state = {
   image: null,
-  canvasSize: 1080,
-  fit: 'contain',
+  ratio: '1:1',
+  bgType: 'color',
   padding: 5,
   bgColor: '#ffffff'
 };
@@ -564,27 +556,17 @@ function init() {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      const val = btn.dataset.size;
-      if (val === 'custom') {
-        document.getElementById('customSizeRow').style.display = 'flex';
-      } else {
-        document.getElementById('customSizeRow').style.display = 'none';
-        state.canvasSize = parseInt(val);
-        render();
-      }
+      state.ratio = btn.dataset.ratio;
+      render();
     });
-  });
-
-  document.getElementById('customSize').addEventListener('input', e => {
-    const v = parseInt(e.target.value);
-    if (v >= 100 && v <= 8000) { state.canvasSize = v; render(); }
   });
 
   document.querySelectorAll('.fit-tab').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.fit-tab').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      state.fit = btn.dataset.fit;
+      state.bgType = btn.dataset.bg;
+      document.getElementById('colorControls').style.display = state.bgType === 'color' ? 'block' : 'none';
       render();
     });
   });
@@ -662,56 +644,65 @@ function loadFile(file) {
   reader.readAsDataURL(file);
 }
 
+function getRatioDimensions(img) {
+  const [rw, rh] = state.ratio.split(':').map(Number);
+  // Base the longer side on the image's longer dimension
+  const imgLong = Math.max(img.width, img.height);
+  const ratioLong = Math.max(rw, rh);
+  const ratioShort = Math.min(rw, rh);
+  const scale = imgLong / ratioLong;
+  // Orient: if ratio is portrait assign width to short side
+  const isPortrait = rh > rw;
+  const canvasW = isPortrait ? Math.round(ratioShort * scale) : Math.round(ratioLong * scale);
+  const canvasH = isPortrait ? Math.round(ratioLong * scale) : Math.round(ratioShort * scale);
+  return { canvasW, canvasH };
+}
+
 function render() {
   if (!state.image) return;
   const canvas = document.getElementById('mainCanvas');
-  const size = state.canvasSize;
-  canvas.width = size;
-  canvas.height = size;
+  const img = state.image;
+  const { canvasW, canvasH } = getRatioDimensions(img);
+
+  canvas.width = canvasW;
+  canvas.height = canvasH;
   const ctx = canvas.getContext('2d');
 
-  ctx.fillStyle = state.bgColor;
-  ctx.fillRect(0, 0, size, size);
-
-  const pad = Math.round(size * (state.padding / 100));
-  const availW = size - pad * 2;
-  const availH = size - pad * 2;
-  const img = state.image;
-
-  let drawW, drawH, drawX, drawY;
-
-  if (state.fit === 'contain') {
-    const scale = Math.min(availW / img.width, availH / img.height);
-    drawW = img.width * scale;
-    drawH = img.height * scale;
-    drawX = (size - drawW) / 2;
-    drawY = (size - drawH) / 2;
-    ctx.drawImage(img, drawX, drawY, drawW, drawH);
-  } else if (state.fit === 'cover') {
-    const scale = Math.max(availW / img.width, availH / img.height);
-    drawW = img.width * scale;
-    drawH = img.height * scale;
-    drawX = (size - drawW) / 2;
-    drawY = (size - drawH) / 2;
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(pad, pad, availW, availH);
-    ctx.clip();
-    ctx.drawImage(img, drawX, drawY, drawW, drawH);
-    ctx.restore();
+  // Draw background
+  if (state.bgType === 'blur') {
+    // Scale blurred image to cover the canvas, then blur
+    const coverScale = Math.max(canvasW / img.width, canvasH / img.height);
+    const bw = img.width * coverScale;
+    const bh = img.height * coverScale;
+    const bx = (canvasW - bw) / 2;
+    const by = (canvasH - bh) / 2;
+    ctx.filter = 'blur(24px) brightness(0.75)';
+    ctx.drawImage(img, bx, by, bw, bh);
+    ctx.filter = 'none';
   } else {
-    drawW = img.width;
-    drawH = img.height;
-    drawX = (size - drawW) / 2;
-    drawY = (size - drawH) / 2;
-    ctx.drawImage(img, drawX, drawY, drawW, drawH);
+    ctx.fillStyle = state.bgColor;
+    ctx.fillRect(0, 0, canvasW, canvasH);
   }
 
-  document.getElementById('canvasMeta').textContent = size + ' × ' + size + 'px';
+  // Draw image (contain within padded area)
+  const pad = Math.round(Math.min(canvasW, canvasH) * (state.padding / 100));
+  const availW = canvasW - pad * 2;
+  const availH = canvasH - pad * 2;
+  const scale = Math.min(availW / img.width, availH / img.height);
+  const drawW = img.width * scale;
+  const drawH = img.height * scale;
+  const drawX = (canvasW - drawW) / 2;
+  const drawY = (canvasH - drawH) / 2;
+  ctx.drawImage(img, drawX, drawY, drawW, drawH);
 
-  const displaySize = Math.min(600, size);
-  canvas.style.width = displaySize + 'px';
-  canvas.style.height = displaySize + 'px';
+  document.getElementById('canvasMeta').textContent = canvasW + ' × ' + canvasH + 'px';
+
+  // Scale preview to fit the canvas area
+  const maxW = document.getElementById('canvasArea').clientWidth - 64;
+  const maxH = document.getElementById('canvasArea').clientHeight - 64;
+  const previewScale = Math.min(maxW / canvasW, maxH / canvasH, 1);
+  canvas.style.width = Math.round(canvasW * previewScale) + 'px';
+  canvas.style.height = Math.round(canvasH * previewScale) + 'px';
 }
 
 function exportImage() {
