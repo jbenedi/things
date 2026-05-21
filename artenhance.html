@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Artwork Enhancer</title>
+<script src="https://jbenedict.com/assets/js/jquery.js"></script>
+<script src="https://jbenedict.com/assets/js/main.js" type="text/javascript" defer></script>
+<link rel="stylesheet" media="screen" href="https://jbenedict.com/assets/css/main.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --surface2: #1f1f1f;
+    --border: #2a2a2a;
+    --border2: #333;
+    --text: #e8e8e8;
+    --text2: #888;
+    --text3: #555;
+    --accent: #a30b00;
+    --accent-dim: #8a0900;
+    --radius: 6px;
+    --font-sans: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    padding-top: 115px;
+  }
+
+  header {
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  header h1 { font-size: 15px; font-weight: 500; letter-spacing: 0.02em; }
+  header span { font-size: 12px; color: var(--text3); font-family: var(--font-mono); }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: calc(100vh - 115px - 53px);
+  }
+
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 20px 20px 90px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    max-height: 100%;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+  .drop-zone {
+    border: 1px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    background: var(--surface);
+  }
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(163,11,0,0.04);
+  }
+  .drop-zone input { display: none; }
+  .drop-zone .icon { font-size: 24px; color: var(--text3); margin-bottom: 8px; display: block; }
+  .drop-zone p { color: var(--text2); font-size: 12px; line-height: 1.5; }
+  .drop-zone p strong { color: var(--text); font-weight: 400; }
+
+  .range-group { display: flex; flex-direction: column; gap: 6px; }
+  .range-header { display: flex; justify-content: space-between; align-items: center; }
+  .range-header label { font-size: 12px; color: var(--text2); }
+  .range-val { font-family: var(--font-mono); font-size: 12px; color: var(--accent); min-width: 36px; text-align: right; }
+
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 2px;
+    background: var(--border2); outline: none; border-radius: 2px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 14px; height: 14px;
+    background: var(--accent); border-radius: 50%; cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px;
+    background: var(--accent); border-radius: 50%; cursor: pointer; border: none;
+  }
+
+  .fit-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 3px;
+  }
+  .fit-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--text3);
+    font-size: 12px;
+    font-family: var(--font-sans);
+    padding: 5px 0;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .fit-tab.active { background: var(--surface); color: var(--text); }
+
+  .size-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .size-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text2);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 7px 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .size-btn:hover { border-color: var(--border2); color: var(--text); }
+  .size-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(163,11,0,0.06); }
+
+  .export-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 16px;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.15s;
+    margin-top: 14px;
+  }
+  .export-btn:hover { background: var(--accent-dim); }
+  .export-btn:disabled { background: var(--border2); color: var(--text3); cursor: not-allowed; }
+
+  /* Canvas area */
+  .canvas-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 1px 1px, #1e1e1e 1px, transparent 0);
+    background-size: 24px 24px;
+    padding: 32px 32px calc(70px + 32px) 32px;
+    overflow: hidden;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: var(--text3);
+  }
+  .placeholder svg { opacity: 0.2; }
+  .placeholder p { font-size: 13px; text-align: center; line-height: 1.6; }
+
+  .canvas-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  canvas {
+    border-radius: 4px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    max-width: calc(100vw - 280px - 64px);
+    max-height: calc(100vh - 115px - 53px - 70px - 96px);
+    display: block;
+    width: auto;
+    height: auto;
+  }
+
+  .canvas-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .footer { position: fixed; bottom: 0; left: 0; }
+</style>
+</head>
+<body>
+
+<div id="importheader"></div>
+
+<header>
+  <h1>Artwork Enhancer</h1>
+  <span>Add color noise and grain overlays to artwork</span>
+</header>
+
+<div class="workspace">
+  <div class="sidebar">
+
+    <div>
+      <div class="section-label">Image</div>
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept="image/*">
+        <span class="icon">⬆</span>
+        <p><strong>Drop image here</strong><br>or click to browse</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Noise Type</div>
+      <div class="fit-tabs">
+        <button class="fit-tab active" data-type="color">Color</button>
+        <button class="fit-tab" data-type="mono">Mono</button>
+        <button class="fit-tab" data-type="grain">Film Grain</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="range-group">
+        <div class="range-header">
+          <label>Intensity</label>
+          <span class="range-val" id="intensityVal">15%</span>
+        </div>
+        <input type="range" id="intensityRange" min="1" max="60" value="15" step="1">
+      </div>
+
+      <div style="margin-top:12px;">
+        <div class="range-group">
+          <div class="range-header">
+            <label>Blend opacity</label>
+            <span class="range-val" id="opacityVal">40%</span>
+          </div>
+          <input type="range" id="opacityRange" min="5" max="100" value="40" step="5">
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <button class="export-btn" id="exportBtn" disabled>Download PNG</button>
+    </div>
+
+  </div>
+
+  <div class="canvas-area" id="canvasArea">
+    <div class="placeholder" id="placeholder">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="6" y="6" width="52" height="52" rx="4" stroke="#888" stroke-width="1.5"/>
+        <path d="M6 42 L18 28 L28 38 L38 22 L58 42" stroke="#888" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="21" cy="20" r="5" stroke="#888" stroke-width="1.5"/>
+        <rect x="18" y="18" width="28" height="28" fill="none" stroke="#888" stroke-width="0.5" stroke-dasharray="1 2"/>
+      </svg>
+      <p>Upload artwork to add noise and grain</p>
+    </div>
+    <div class="canvas-wrap" id="canvasWrap" style="display:none;">
+      <span class="canvas-meta" id="canvasMeta"></span>
+      <canvas id="mainCanvas"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+const state = {
+  image: null,
+  type: 'color',
+  intensity: 15,
+  opacity: 0.4,
+  // Cached noise layer so we don't regenerate on every opacity tweak
+  noiseCache: null,
+  noiseCacheKey: null,
+};
+
+function getNoiseCacheKey() {
+  if (!state.image) return null;
+  return `${state.image.src.slice(-20)}_${state.type}_${state.intensity}_${state.image.naturalWidth}_${state.image.naturalHeight}`;
+}
+
+function generateNoise(w, h) {
+  const offCanvas = document.createElement('canvas');
+  offCanvas.width = w;
+  offCanvas.height = h;
+  const ctx = offCanvas.getContext('2d');
+  const imageData = ctx.createImageData(w, h);
+  const data = imageData.data;
+  const intensity = state.intensity;
+
+  for (let i = 0; i < data.length; i += 4) {
+    if (state.type === 'color') {
+      data[i]     = Math.random() * 255;
+      data[i + 1] = Math.random() * 255;
+      data[i + 2] = Math.random() * 255;
+      data[i + 3] = Math.floor(Math.random() * intensity * 2.5);
+    } else if (state.type === 'mono') {
+      const v = Math.random() * 255;
+      data[i] = data[i+1] = data[i+2] = v;
+      data[i + 3] = Math.floor(Math.random() * intensity * 2.5);
+    } else if (state.type === 'grain') {
+      // Film grain: subtle luminance variation, gaussian-ish distribution
+      const g = ((Math.random() + Math.random() + Math.random()) / 3) * 255;
+      data[i] = data[i+1] = data[i+2] = g;
+      data[i + 3] = Math.floor(Math.random() * intensity * 1.8);
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+  return offCanvas;
+}
+
+function render() {
+  if (!state.image) return;
+
+  const canvas = document.getElementById('mainCanvas');
+  const img = state.image;
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext('2d');
+
+  // Draw original
+  ctx.drawImage(img, 0, 0);
+
+  // Get or generate noise layer
+  const cacheKey = getNoiseCacheKey();
+  if (state.noiseCacheKey !== cacheKey) {
+    state.noiseCache = generateNoise(img.naturalWidth, img.naturalHeight);
+    state.noiseCacheKey = cacheKey;
+  }
+
+  // Composite noise over image
+  ctx.globalAlpha = state.opacity;
+  ctx.globalCompositeOperation = 'overlay';
+  ctx.drawImage(state.noiseCache, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+
+  document.getElementById('canvasMeta').textContent =
+    img.naturalWidth + ' × ' + img.naturalHeight + 'px';
+}
+
+function regenerateAndRender() {
+  state.noiseCacheKey = null; // force regeneration
+  render();
+}
+
+function init() {
+  const dz = document.getElementById('dropZone');
+  dz.addEventListener('click', () => document.getElementById('fileInput').click());
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) loadFile(file);
+  });
+  document.getElementById('fileInput').addEventListener('change', e => {
+    if (e.target.files[0]) loadFile(e.target.files[0]);
+  });
+
+  document.addEventListener('paste', e => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) { loadFile(item.getAsFile()); break; }
+    }
+  });
+
+  document.querySelectorAll('.fit-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.fit-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.type = btn.dataset.type;
+      regenerateAndRender();
+    });
+  });
+
+  document.getElementById('intensityRange').addEventListener('input', e => {
+    state.intensity = parseInt(e.target.value);
+    document.getElementById('intensityVal').textContent = state.intensity + '%';
+    regenerateAndRender();
+  });
+
+  document.getElementById('opacityRange').addEventListener('input', e => {
+    state.opacity = parseInt(e.target.value) / 100;
+    document.getElementById('opacityVal').textContent = e.target.value + '%';
+    render(); // no need to regenerate noise, just recomposite
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    const canvas = document.getElementById('mainCanvas');
+    canvas.toBlob(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'enhanced.png';
+      a.click();
+      URL.revokeObjectURL(url);
+    }, 'image/png');
+  });
+}
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      state.image = img;
+      state.noiseCacheKey = null;
+      document.getElementById('placeholder').style.display = 'none';
+      document.getElementById('canvasWrap').style.display = 'flex';
+      document.getElementById('exportBtn').disabled = false;
+      render();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+init();
+</script>
+
+<div id="importfooter"></div>
+</body>
+</html>
