@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QR Generator</title>
+<script src="https://jbenedict.com/assets/js/jquery.js"></script>
+<script src="https://jbenedict.com/assets/js/main.js" type="text/javascript" defer></script>
+<link rel="stylesheet" media="screen" href="https://jbenedict.com/assets/css/main.css">
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --surface2: #1f1f1f;
+    --border: #2a2a2a;
+    --border2: #333;
+    --text: #e8e8e8;
+    --text2: #888;
+    --text3: #555;
+    --accent: #a30b00;
+    --accent-dim: #8a0900;
+    --radius: 6px;
+    --font-sans: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    padding-top: 115px;
+  }
+
+  header {
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  header h1 { font-size: 15px; font-weight: 500; letter-spacing: 0.02em; }
+  header span { font-size: 12px; color: var(--text3); font-family: var(--font-mono); }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: calc(100vh - 115px - 53px);
+  }
+
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 20px 20px 90px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    max-height: 100%;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+  textarea {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 8px 10px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.2s;
+    resize: none;
+    height: 80px;
+    line-height: 1.5;
+  }
+  textarea:focus { border-color: var(--border2); }
+
+  .size-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .size-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text2);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 7px 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .size-btn:hover { border-color: var(--border2); color: var(--text); }
+  .size-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(163,11,0,0.06); }
+
+  .fit-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 3px;
+  }
+  .fit-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--text3);
+    font-size: 12px;
+    font-family: var(--font-sans);
+    padding: 5px 0;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .fit-tab.active { background: var(--surface); color: var(--text); }
+
+  .color-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .color-row label { font-size: 12px; color: var(--text2); min-width: 60px; }
+
+  input[type="color"] {
+    -webkit-appearance: none; appearance: none;
+    width: 28px; height: 28px;
+    border: 1px solid var(--border2);
+    border-radius: 4px; cursor: pointer; padding: 2px; background: transparent;
+    flex-shrink: 0;
+  }
+  input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+  input[type="color"]::-webkit-color-swatch { border: none; border-radius: 2px; }
+
+  .hex-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 5px 8px;
+    width: 90px;
+    outline: none;
+    transition: border-color 0.2s;
+    text-transform: uppercase;
+  }
+  .hex-input:focus { border-color: var(--border2); }
+
+  .error-correction-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .ec-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text2);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 7px 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    align-items: center;
+  }
+  .ec-btn:hover { border-color: var(--border2); color: var(--text); }
+  .ec-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(163,11,0,0.06); }
+  .ec-btn span { font-size: 9px; color: var(--text3); font-family: var(--font-sans); }
+  .ec-btn.active span { color: rgba(163,11,0,0.6); }
+
+  .export-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 16px;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.15s;
+    margin-top: 14px;
+  }
+  .export-btn:hover { background: var(--accent-dim); }
+  .export-btn:disabled { background: var(--border2); color: var(--text3); cursor: not-allowed; }
+
+  /* Canvas area */
+  .canvas-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 1px 1px, #1e1e1e 1px, transparent 0);
+    background-size: 24px 24px;
+    padding: 32px 32px calc(70px + 32px) 32px;
+    overflow: hidden;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: var(--text3);
+  }
+  .placeholder svg { opacity: 0.2; }
+  .placeholder p { font-size: 13px; text-align: center; line-height: 1.6; }
+
+  .qr-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .qr-card {
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+  }
+
+  #qrContainer canvas {
+    display: block;
+    border-radius: 4px;
+    max-width: calc(100vw - 280px - 128px);
+    max-height: calc(100vh - 115px - 53px - 70px - 160px);
+  }
+
+  .canvas-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .footer { position: fixed; bottom: 0; left: 0; }
+</style>
+</head>
+<body>
+
+<div id="importheader"></div>
+
+<header>
+  <h1>QR Generator</h1>
+  <span>Generate QR codes from URLs or any text</span>
+</header>
+
+<div class="workspace">
+  <div class="sidebar">
+
+    <div>
+      <div class="section-label">Content</div>
+      <textarea id="valueInput" placeholder="https://example.com">https://example.com</textarea>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Size</div>
+      <div class="size-grid">
+        <button class="size-btn" data-size="128">128px</button>
+        <button class="size-btn" data-size="256">256px</button>
+        <button class="size-btn active" data-size="512">512px</button>
+        <button class="size-btn" data-size="1024">1024px</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Error Correction</div>
+      <div class="error-correction-grid">
+        <button class="ec-btn active" data-ec="L">L<span>7% recovery</span></button>
+        <button class="ec-btn" data-ec="M">M<span>15% recovery</span></button>
+        <button class="ec-btn" data-ec="Q">Q<span>25% recovery</span></button>
+        <button class="ec-btn" data-ec="H">H<span>30% recovery</span></button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Colors</div>
+      <div class="color-row">
+        <label>Foreground</label>
+        <input type="color" id="fgColor" value="#000000">
+        <input type="text" class="hex-input" id="fgHex" value="#000000" maxlength="7">
+      </div>
+      <div class="color-row">
+        <label>Background</label>
+        <input type="color" id="bgColor" value="#ffffff">
+        <input type="text" class="hex-input" id="bgHex" value="#FFFFFF" maxlength="7">
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <button class="export-btn" id="exportBtn" disabled>Download PNG</button>
+
+  </div>
+
+  <div class="canvas-area">
+    <div class="placeholder" id="placeholder">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="4" width="24" height="24" rx="2" stroke="#888" stroke-width="1.5"/>
+        <rect x="10" y="10" width="12" height="12" rx="1" fill="#555"/>
+        <rect x="36" y="4" width="24" height="24" rx="2" stroke="#888" stroke-width="1.5"/>
+        <rect x="42" y="10" width="12" height="12" rx="1" fill="#555"/>
+        <rect x="4" y="36" width="24" height="24" rx="2" stroke="#888" stroke-width="1.5"/>
+        <rect x="10" y="42" width="12" height="12" rx="1" fill="#555"/>
+        <rect x="36" y="36" width="6" height="6" fill="#555"/>
+        <rect x="46" y="36" width="6" height="6" fill="#555"/>
+        <rect x="56" y="36" width="6" height="6" fill="#555"/>
+        <rect x="36" y="46" width="6" height="6" fill="#555"/>
+        <rect x="46" y="56" width="6" height="6" fill="#555"/>
+        <rect x="56" y="46" width="6" height="14" fill="#555"/>
+      </svg>
+      <p>Enter content to generate a QR code</p>
+    </div>
+    <div class="qr-wrap" id="qrWrap" style="display:none;">
+      <div class="qr-card" id="qrCard">
+        <div id="qrContainer"></div>
+      </div>
+      <span class="canvas-meta" id="canvasMeta"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+const state = {
+  value: 'https://example.com',
+  size: 512,
+  ec: 'L',
+  fg: '#000000',
+  bg: '#ffffff',
+};
+
+let qrInstance = null;
+
+function render() {
+  if (!state.value.trim()) return;
+
+  const container = document.getElementById('qrContainer');
+  container.innerHTML = '';
+
+  qrInstance = new QRCode(container, {
+    text: state.value,
+    width: state.size,
+    height: state.size,
+    colorDark: state.fg,
+    colorLight: state.bg,
+    correctLevel: QRCode.CorrectLevel[state.ec],
+  });
+
+  document.getElementById('placeholder').style.display = 'none';
+  document.getElementById('qrWrap').style.display = 'flex';
+  document.getElementById('qrCard').style.background = state.bg;
+  document.getElementById('exportBtn').disabled = false;
+  document.getElementById('canvasMeta').textContent = state.size + ' × ' + state.size + 'px';
+}
+
+function setFg(hex) {
+  state.fg = hex;
+  document.getElementById('fgColor').value = hex;
+  document.getElementById('fgHex').value = hex.toUpperCase();
+  render();
+}
+
+function setBg(hex) {
+  state.bg = hex;
+  document.getElementById('bgColor').value = hex;
+  document.getElementById('bgHex').value = hex.toUpperCase();
+  document.getElementById('qrCard').style.background = hex;
+  render();
+}
+
+function getCanvas() {
+  return document.querySelector('#qrContainer canvas');
+}
+
+function init() {
+  document.getElementById('valueInput').addEventListener('input', e => {
+    state.value = e.target.value;
+    render();
+  });
+
+  document.querySelectorAll('.size-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.size = parseInt(btn.dataset.size);
+      render();
+    });
+  });
+
+  document.querySelectorAll('.ec-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.ec-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.ec = btn.dataset.ec;
+      render();
+    });
+  });
+
+  document.getElementById('fgColor').addEventListener('input', e => setFg(e.target.value));
+  document.getElementById('fgHex').addEventListener('input', e => {
+    let v = e.target.value;
+    if (!v.startsWith('#')) v = '#' + v;
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) setFg(v);
+  });
+
+  document.getElementById('bgColor').addEventListener('input', e => setBg(e.target.value));
+  document.getElementById('bgHex').addEventListener('input', e => {
+    let v = e.target.value;
+    if (!v.startsWith('#')) v = '#' + v;
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) setBg(v);
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    const canvas = getCanvas();
+    if (!canvas) return;
+    canvas.toBlob(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'qr-code.png';
+      a.click();
+      URL.revokeObjectURL(url);
+    }, 'image/png');
+  });
+
+  render();
+}
+
+init();
+</script>
+
+<div id="importfooter"></div>
+</body>
+</html>
