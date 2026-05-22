@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Word Counter</title>
+<script src="https://jbenedict.com/assets/js/jquery.js"></script>
+<script src="https://jbenedict.com/assets/js/main.js" type="text/javascript" defer></script>
+<link rel="stylesheet" media="screen" href="https://jbenedict.com/assets/css/main.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --surface2: #1f1f1f;
+    --border: #2a2a2a;
+    --border2: #333;
+    --text: #e8e8e8;
+    --text2: #888;
+    --text3: #555;
+    --accent: #a30b00;
+    --accent-dim: #8a0900;
+    --radius: 6px;
+    --font-sans: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    padding-top: 115px;
+  }
+
+  header {
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  header h1 { font-size: 15px; font-weight: 500; letter-spacing: 0.02em; }
+  header span { font-size: 12px; color: var(--text3); font-family: var(--font-mono); }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: calc(100vh - 115px - 53px);
+  }
+
+  /* Text area side */
+  .editor-pane {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .editor-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .pane-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    font-family: var(--font-mono);
+  }
+
+  .clear-btn {
+    background: none;
+    border: none;
+    color: var(--text3);
+    font-size: 11px;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    transition: color 0.15s;
+    padding: 0;
+  }
+  .clear-btn:hover { color: var(--accent); }
+
+  textarea {
+    flex: 1;
+    background: var(--surface);
+    border: none;
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.8;
+    padding: 24px 28px calc(70px + 24px) 28px;
+    resize: none;
+    outline: none;
+    min-height: 0;
+    width: 100%;
+  }
+  textarea::placeholder { color: var(--text3); }
+
+  /* Stats sidebar */
+  .stats-pane {
+    padding: 24px 20px 90px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow-y: auto;
+    max-height: 100%;
+    border-right: 1px solid var(--border);
+  }
+
+  .stat-card {
+    padding: 18px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .stat-card:first-child { padding-top: 0; }
+
+  .stat-value {
+    font-family: var(--font-mono);
+    font-size: 32px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1;
+    transition: color 0.1s;
+  }
+
+  .stat-value.has-value { color: var(--accent); }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  /* Reading time */
+  .reading-time {
+    padding: 18px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .reading-time .stat-value { font-size: 24px; }
+
+  /* Keyword density */
+  .keyword-section {
+    padding: 18px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .keyword-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+
+  .keyword-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .keyword-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  .keyword-word {
+    font-family: var(--font-mono);
+    color: var(--text);
+    min-width: 80px;
+    flex-shrink: 0;
+  }
+
+  .keyword-bar-wrap {
+    flex: 1;
+    height: 3px;
+    background: var(--border2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .keyword-bar {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.2s;
+  }
+
+  .keyword-count {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text3);
+    min-width: 20px;
+    text-align: right;
+  }
+
+  .empty-keywords {
+    font-size: 12px;
+    color: var(--text3);
+  }
+
+  .footer { position: fixed; bottom: 0; left: 0; }
+</style>
+</head>
+<body>
+
+<div id="importheader"></div>
+
+<header>
+  <h1>Word Counter</h1>
+  <span>Count words, characters, sentences, and paragraphs</span>
+</header>
+
+<div class="workspace">
+
+  <div class="stats-pane">
+
+    <div class="stat-card">
+      <div class="stat-value" id="statWords">0</div>
+      <div class="stat-label">Words</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-value" id="statChars">0</div>
+      <div class="stat-label">Characters</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-value" id="statCharsNoSpace">0</div>
+      <div class="stat-label">Chars (no spaces)</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-value" id="statSentences">0</div>
+      <div class="stat-label">Sentences</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-value" id="statParagraphs">0</div>
+      <div class="stat-label">Paragraphs</div>
+    </div>
+
+    <div class="reading-time">
+      <div class="stat-value" id="statReadTime">0 sec</div>
+      <div class="stat-label">Reading time</div>
+    </div>
+
+    <div class="keyword-section">
+      <div class="keyword-label">Top words</div>
+      <div class="keyword-list" id="keywordList">
+        <span class="empty-keywords">No text yet</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="editor-pane">
+    <div class="editor-header">
+      <span class="pane-label">Text</span>
+      <button class="clear-btn" id="clearBtn">Clear</button>
+    </div>
+    <textarea id="textInput" placeholder="Start typing or paste your text here…" spellcheck="true"></textarea>
+  </div>
+</div>
+
+<script>
+const STOP_WORDS = new Set([
+  'the','a','an','and','or','but','in','on','at','to','for','of','with',
+  'by','from','as','is','was','are','were','be','been','being','have',
+  'has','had','do','does','did','will','would','could','should','may',
+  'might','shall','it','its','this','that','these','those','i','you',
+  'he','she','we','they','me','him','her','us','them','my','your','his',
+  'her','our','their','not','no','so','if','up','out','about','into',
+  'then','than','when','what','which','who','how','all','each','more',
+  'also','just','over','such','after','before','between',
+]);
+
+function count() {
+  const text = document.getElementById('textInput').value;
+
+  const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+  const chars = text.length;
+  const charsNoSpace = text.replace(/\s/g, '').length;
+  const sentences = text.trim() === '' ? 0 :
+    (text.match(/[^.!?]*[.!?]+/g) || []).length;
+  const paragraphs = text.trim() === '' ? 0 :
+    text.trim().split('\n').filter(p => p.trim().length > 0).length;
+
+  // Reading time at 200 wpm
+  const readSec = Math.round((words / 200) * 60);
+  let readTime;
+  if (readSec < 60) readTime = readSec + ' sec';
+  else {
+    const m = Math.floor(readSec / 60);
+    const s = readSec % 60;
+    readTime = m + ' min' + (s > 0 ? ' ' + s + ' sec' : '');
+  }
+
+  // Update stats
+  const setVal = (id, val) => {
+    const el = document.getElementById(id);
+    el.textContent = val;
+    el.classList.toggle('has-value', typeof val === 'number' ? val > 0 : val !== '0 sec' && val !== '0');
+  };
+
+  setVal('statWords', words);
+  setVal('statChars', chars);
+  setVal('statCharsNoSpace', charsNoSpace);
+  setVal('statSentences', sentences);
+  setVal('statParagraphs', paragraphs);
+  document.getElementById('statReadTime').textContent = readTime;
+  document.getElementById('statReadTime').classList.toggle('has-value', words > 0);
+
+  // Top words
+  const wordList = document.getElementById('keywordList');
+  if (words === 0) {
+    wordList.innerHTML = '<span class="empty-keywords">No text yet</span>';
+    return;
+  }
+
+  const freq = {};
+  text.toLowerCase().match(/\b[a-z']+\b/g)?.forEach(w => {
+    if (!STOP_WORDS.has(w) && w.length > 2) {
+      freq[w] = (freq[w] || 0) + 1;
+    }
+  });
+
+  const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+  if (sorted.length === 0) {
+    wordList.innerHTML = '<span class="empty-keywords">No significant words found</span>';
+    return;
+  }
+
+  const maxCount = sorted[0][1];
+  wordList.innerHTML = sorted.map(([word, cnt]) => `
+    <div class="keyword-row">
+      <span class="keyword-word">${word}</span>
+      <div class="keyword-bar-wrap">
+        <div class="keyword-bar" style="width:${Math.round(cnt/maxCount*100)}%"></div>
+      </div>
+      <span class="keyword-count">${cnt}</span>
+    </div>
+  `).join('');
+}
+
+function init() {
+  document.getElementById('textInput').addEventListener('input', count);
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    document.getElementById('textInput').value = '';
+    count();
+  });
+  count();
+}
+
+init();
+</script>
+
+<div id="importfooter"></div>
+</body>
+</html>
