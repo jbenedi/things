@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Time Converter</title>
+<script src="https://jbenedict.com/assets/js/jquery.js"></script>
+<script src="https://jbenedict.com/assets/js/main.js" type="text/javascript" defer></script>
+<link rel="stylesheet" media="screen" href="https://jbenedict.com/assets/css/main.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --surface2: #1f1f1f;
+    --border: #2a2a2a;
+    --border2: #333;
+    --text: #e8e8e8;
+    --text2: #888;
+    --text3: #555;
+    --accent: #a30b00;
+    --accent-dim: #8a0900;
+    --radius: 6px;
+    --font-sans: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    padding-top: 115px;
+  }
+
+  header {
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  header h1 { font-size: 15px; font-weight: 500; letter-spacing: 0.02em; }
+  header span { font-size: 12px; color: var(--text3); font-family: var(--font-mono); }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: calc(100vh - 115px - 53px);
+  }
+
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 20px 20px 90px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    max-height: 100%;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+  .tool-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .tool-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text2);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    padding: 8px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+    width: 100%;
+  }
+  .tool-btn:hover { border-color: var(--border2); color: var(--text); }
+  .tool-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(163,11,0,0.06); }
+
+  /* Main area */
+  .main-area {
+    overflow-y: auto;
+    padding: 28px 32px calc(70px + 28px) 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .panel { display: none; flex-direction: column; gap: 16px; }
+  .panel.active { display: flex; }
+
+  .panel-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .field-label {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .field-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+  .field-input:focus { border-color: var(--border2); }
+
+  select.field-input {
+    cursor: pointer;
+  }
+
+  .result-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .result-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  .result-label {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+    min-width: 140px;
+    flex-shrink: 0;
+  }
+
+  .result-value {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text);
+    flex: 1;
+    word-break: break-all;
+  }
+
+  .result-copy {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .result-copy:hover { border-color: var(--border2); color: var(--text); }
+  .result-copy.copied { border-color: var(--accent); color: var(--accent); }
+
+  .now-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text2);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    padding: 7px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    align-self: flex-start;
+  }
+  .now-btn:hover { border-color: var(--border2); color: var(--text); }
+
+  .row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .separator {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+    padding: 4px 0;
+  }
+
+  .footer { position: fixed; bottom: 0; left: 0; }
+</style>
+</head>
+<body>
+
+<div id="importheader"></div>
+
+<header>
+  <h1>Time Converter</h1>
+  <span>Unix timestamps, timezone conversion, and duration math</span>
+</header>
+
+<div class="workspace">
+  <div class="sidebar">
+    <div>
+      <div class="section-label">Tools</div>
+      <div class="tool-list">
+        <button class="tool-btn active" data-panel="unix">Unix Timestamp</button>
+        <button class="tool-btn" data-panel="timezone">Timezone Converter</button>
+        <button class="tool-btn" data-panel="duration">Duration Calculator</button>
+        <button class="tool-btn" data-panel="humanize">Humanize Duration</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-area">
+
+    <!-- Unix Timestamp -->
+    <div class="panel active" id="panel-unix">
+      <div class="panel-title">Unix Timestamp Converter</div>
+
+      <div class="field-group">
+        <div class="field-label">Unix Timestamp (seconds)</div>
+        <input type="number" class="field-input" id="unixInput" placeholder="e.g. 1700000000">
+        <button class="now-btn" id="unixNowBtn">Use current time</button>
+      </div>
+
+      <div class="result-grid" id="unixResults"></div>
+    </div>
+
+    <!-- Timezone Converter -->
+    <div class="panel" id="panel-timezone">
+      <div class="panel-title">Timezone Converter</div>
+
+      <div class="row-2">
+        <div class="field-group">
+          <div class="field-label">Date</div>
+          <input type="date" class="field-input" id="tzDate">
+        </div>
+        <div class="field-group">
+          <div class="field-label">Time</div>
+          <input type="time" class="field-input" id="tzTime">
+        </div>
+      </div>
+
+      <div class="result-grid" id="tzResults"></div>
+    </div>
+
+    <!-- Duration Calculator -->
+    <div class="panel" id="panel-duration">
+      <div class="panel-title">Duration Between Two Times</div>
+
+      <div class="row-2">
+        <div class="field-group">
+          <div class="field-label">Start</div>
+          <input type="datetime-local" class="field-input" id="durStart">
+        </div>
+        <div class="field-group">
+          <div class="field-label">End</div>
+          <input type="datetime-local" class="field-input" id="durEnd">
+        </div>
+      </div>
+
+      <div class="result-grid" id="durResults"></div>
+    </div>
+
+    <!-- Humanize Duration -->
+    <div class="panel" id="panel-humanize">
+      <div class="panel-title">Humanize a Duration</div>
+
+      <div class="field-group">
+        <div class="field-label">Seconds</div>
+        <input type="number" class="field-input" id="humanSeconds" placeholder="e.g. 90061" min="0">
+      </div>
+
+      <div class="result-grid" id="humanResults"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── Timezones ─────────────────────────────────────────────────────
+
+const TIMEZONES = [
+  'UTC',
+  'America/New_York','America/Chicago','America/Denver','America/Los_Angeles',
+  'America/Toronto','America/Vancouver','America/Sao_Paulo','America/Mexico_City',
+  'America/Buenos_Aires','America/Bogota','America/Lima',
+  'Europe/London','Europe/Paris','Europe/Berlin','Europe/Madrid',
+  'Europe/Rome','Europe/Amsterdam','Europe/Stockholm','Europe/Moscow',
+  'Europe/Istanbul','Europe/Warsaw','Europe/Prague','Europe/Zurich',
+  'Asia/Tokyo','Asia/Shanghai','Asia/Hong_Kong','Asia/Singapore',
+  'Asia/Seoul','Asia/Kolkata','Asia/Dubai','Asia/Bangkok',
+  'Asia/Karachi','Asia/Dhaka','Asia/Taipei','Asia/Jakarta',
+  'Australia/Sydney','Australia/Melbourne','Australia/Perth',
+  'Pacific/Auckland','Pacific/Honolulu','Pacific/Fiji',
+  'Africa/Cairo','Africa/Johannesburg','Africa/Lagos','Africa/Nairobi',
+];
+
+// ── Helpers ───────────────────────────────────────────────────────
+
+function pad(n) { return String(n).padStart(2, '0'); }
+
+function formatDate(date) {
+  return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
+function formatInTz(ts, tz) {
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false,
+    }).format(new Date(ts)).replace(',', '');
+  } catch { return 'Invalid'; }
+}
+
+function makeResultRow(label, value) {
+  return `
+    <div class="result-row">
+      <span class="result-label">${label}</span>
+      <span class="result-value">${value}</span>
+      <button class="result-copy" onclick="copyVal(this, '${value.replace(/'/g,"\\'")}')">Copy</button>
+    </div>`;
+}
+
+function copyVal(btn, val) {
+  navigator.clipboard.writeText(val).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+function setResults(id, rows) {
+  document.getElementById(id).innerHTML = rows.join('');
+}
+
+// ── Unix Timestamp ────────────────────────────────────────────────
+
+function processUnix() {
+  const raw = document.getElementById('unixInput').value.trim();
+  if (!raw) { setResults('unixResults', []); return; }
+
+  let ts = parseInt(raw);
+  // Auto-detect milliseconds
+  if (raw.length === 13) ts = ts; // ms already
+  else ts = ts * 1000; // assume seconds
+
+  const d = new Date(ts);
+  if (isNaN(d)) { setResults('unixResults', ['<div class="result-row"><span class="result-value" style="color:var(--accent)">Invalid timestamp</span></div>']); return; }
+
+  const rows = [
+    makeResultRow('UTC', d.toUTCString()),
+    makeResultRow('Local time', formatDate(d)),
+    makeResultRow('Unix (sec)', Math.floor(ts / 1000).toString()),
+    makeResultRow('Unix (ms)', ts.toString()),
+    makeResultRow('Day of week', d.toLocaleDateString('en-US', { weekday: 'long' })),
+    makeResultRow('Week number', getWeekNumber(d).toString()),
+  ];
+  setResults('unixResults', rows);
+}
+
+function getWeekNumber(d) {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+}
+
+// ── Timezone Converter ────────────────────────────────────────────
+
+const TARGET_TZS = [
+  'America/Los_Angeles',
+  'America/Denver',
+  'America/Chicago',
+  'America/New_York',
+  'UTC',
+  'Europe/London',
+  'Europe/Paris',
+  'Asia/Dubai',
+  'Asia/Shanghai',
+  'Asia/Tokyo',
+  'Australia/Sydney',
+];
+
+function processTz() {
+  const dateVal = document.getElementById('tzDate').value;
+  const timeVal = document.getElementById('tzTime').value;
+  const fromTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  if (!dateVal || !timeVal) { setResults('tzResults', []); return; }
+
+  const utcMs = getUtcFromTz(dateVal, timeVal, fromTz);
+  if (!utcMs) return;
+
+  // Build list — if user's tz is already in TARGET_TZS, just label it
+  // If not, insert it after the closest zone west of it by UTC offset
+  let tzList;
+  if (TARGET_TZS.includes(fromTz)) {
+    tzList = TARGET_TZS.map(tz => ({
+      tz,
+      label: tz === fromTz ? tz + ' (you)' : tz
+    }));
+  } else {
+    // Get UTC offset of user's tz and all target tzs, insert in order
+    const getOffset = tz => {
+      const d = new Date(utcMs);
+      const s = new Intl.DateTimeFormat('en-US', {
+        timeZone: tz, hour: 'numeric', hour12: false, timeZoneName: 'short'
+      }).formatToParts(d);
+      // Use the numeric offset via trick
+      const utcDate = new Date(d.toLocaleString('en-US', { timeZone: 'UTC' }));
+      const tzDate = new Date(d.toLocaleString('en-US', { timeZone: tz }));
+      return (tzDate - utcDate) / 60000; // offset in minutes
+    };
+
+    const userOffset = getOffset(fromTz);
+    const withOffsets = TARGET_TZS.map(tz => ({ tz, label: tz, offset: getOffset(tz) }));
+    withOffsets.sort((a, b) => a.offset - b.offset);
+
+    // Insert user tz at the right position
+    const insertAt = withOffsets.findIndex(t => t.offset > userOffset);
+    const userEntry = { tz: fromTz, label: fromTz + ' (you)', offset: userOffset };
+    if (insertAt === -1) withOffsets.push(userEntry);
+    else withOffsets.splice(insertAt, 0, userEntry);
+
+    tzList = withOffsets;
+  }
+
+  const rows = tzList.map(({ tz, label }) => makeResultRow(label, formatInTz(utcMs, tz)));
+  setResults('tzResults', rows);
+}
+
+function getUtcFromTz(dateStr, timeStr, tz) {
+  // Trick: format a known UTC time in the target tz, then find the offset
+  try {
+    const naive = new Date(`${dateStr}T${timeStr}:00Z`);
+    // Get what this UTC time looks like in the target tz
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false,
+    }).formatToParts(naive);
+
+    const p = {};
+    parts.forEach(({ type, value }) => { p[type] = value; });
+    const tzDate = new Date(`${p.year}-${p.month}-${p.day}T${p.hour === '24' ? '00' : p.hour}:${p.minute}:${p.second}Z`);
+    const offset = naive - tzDate;
+    return naive.getTime() + offset;
+  } catch { return null; }
+}
+
+// ── Duration Calculator ───────────────────────────────────────────
+
+function processDuration() {
+  const start = document.getElementById('durStart').value;
+  const end = document.getElementById('durEnd').value;
+  if (!start || !end) { setResults('durResults', []); return; }
+
+  const startMs = new Date(start).getTime();
+  const endMs = new Date(end).getTime();
+  const diff = Math.abs(endMs - startMs);
+
+  if (isNaN(diff)) { setResults('durResults', []); return; }
+
+  const totalSec = Math.floor(diff / 1000);
+  const totalMin = Math.floor(diff / 60000);
+  const totalHours = Math.floor(diff / 3600000);
+  const totalDays = Math.floor(diff / 86400000);
+
+  const days = Math.floor(diff / 86400000);
+  const hours = Math.floor((diff % 86400000) / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+  const secs = Math.floor((diff % 60000) / 1000);
+
+  const rows = [
+    makeResultRow('Human readable', `${days}d ${hours}h ${mins}m ${secs}s`),
+    makeResultRow('Total seconds', totalSec.toLocaleString()),
+    makeResultRow('Total minutes', totalMin.toLocaleString()),
+    makeResultRow('Total hours', totalHours.toLocaleString()),
+    makeResultRow('Total days', totalDays.toLocaleString()),
+  ];
+  setResults('durResults', rows);
+}
+
+// ── Humanize Duration ─────────────────────────────────────────────
+
+function processHumanize() {
+  const raw = parseInt(document.getElementById('humanSeconds').value);
+  if (isNaN(raw) || raw < 0) { setResults('humanResults', []); return; }
+
+  const days    = Math.floor(raw / 86400);
+  const hours   = Math.floor((raw % 86400) / 3600);
+  const minutes = Math.floor((raw % 3600) / 60);
+  const seconds = raw % 60;
+
+  const weeks  = Math.floor(raw / 604800);
+  const months = Math.floor(raw / 2629800); // avg
+  const years  = Math.floor(raw / 31557600); // avg
+
+  const parts = [];
+  if (days > 0) parts.push(`${days} day${days !== 1 ? 's' : ''}`);
+  if (hours > 0) parts.push(`${hours} hour${hours !== 1 ? 's' : ''}`);
+  if (minutes > 0) parts.push(`${minutes} minute${minutes !== 1 ? 's' : ''}`);
+  if (seconds > 0 || parts.length === 0) parts.push(`${seconds} second${seconds !== 1 ? 's' : ''}`);
+
+  const rows = [
+    makeResultRow('Broken down', parts.join(', ')),
+    makeResultRow('In weeks', weeks > 0 ? `~${weeks} week${weeks !== 1 ? 's' : ''}` : '< 1 week'),
+    makeResultRow('In months', months > 0 ? `~${months} month${months !== 1 ? 's' : ''}` : '< 1 month'),
+    makeResultRow('In years', years > 0 ? `~${years} year${years !== 1 ? 's' : ''}` : '< 1 year'),
+    makeResultRow('Milliseconds', (raw * 1000).toLocaleString()),
+    makeResultRow('Minutes', Math.floor(raw / 60).toLocaleString()),
+    makeResultRow('Hours', (raw / 3600).toFixed(4)),
+    makeResultRow('Days', (raw / 86400).toFixed(4)),
+  ];
+  setResults('humanResults', rows);
+}
+
+// ── Init ──────────────────────────────────────────────────────────
+
+function init() {
+  // Set default date/time inputs to now
+  const now = new Date();
+  const localISO = new Date(now - now.getTimezoneOffset() * 60000).toISOString();
+  const dateStr = localISO.slice(0, 10);
+  const timeStr = localISO.slice(11, 16);
+  const dtStr = localISO.slice(0, 16);
+
+  document.getElementById('tzDate').value = dateStr;
+  document.getElementById('tzTime').value = timeStr;
+  document.getElementById('durStart').value = dtStr;
+  document.getElementById('durEnd').value = dtStr;
+
+  // Panel switching
+  document.querySelectorAll('.tool-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.panel).classList.add('active');
+    });
+  });
+
+  // Unix
+  document.getElementById('unixInput').addEventListener('input', processUnix);
+  document.getElementById('unixNowBtn').addEventListener('click', () => {
+    document.getElementById('unixInput').value = Math.floor(Date.now() / 1000);
+    processUnix();
+  });
+
+  // Timezone
+  document.getElementById('tzDate').addEventListener('input', processTz);
+  document.getElementById('tzTime').addEventListener('input', processTz);
+
+  // Duration
+  document.getElementById('durStart').addEventListener('input', processDuration);
+  document.getElementById('durEnd').addEventListener('input', processDuration);
+
+  // Humanize
+  document.getElementById('humanSeconds').addEventListener('input', processHumanize);
+
+  // Auto-run unix with current time
+  document.getElementById('unixInput').value = Math.floor(Date.now() / 1000);
+  processUnix();
+  processTz();
+}
+
+init();
+</script>
+
+<div id="importfooter"></div>
+</body>
+</html>
