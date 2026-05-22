@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paste Image to Download</title>
+<script src="https://jbenedict.com/assets/js/jquery.js"></script>
+<script src="https://jbenedict.com/assets/js/main.js" type="text/javascript" defer></script>
+<link rel="stylesheet" media="screen" href="https://jbenedict.com/assets/css/main.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --surface2: #1f1f1f;
+    --border: #2a2a2a;
+    --border2: #333;
+    --text: #e8e8e8;
+    --text2: #888;
+    --text3: #555;
+    --accent: #a30b00;
+    --accent-dim: #8a0900;
+    --radius: 6px;
+    --font-sans: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    padding-top: 115px;
+  }
+
+  header {
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  header h1 { font-size: 15px; font-weight: 500; letter-spacing: 0.02em; }
+  header span { font-size: 12px; color: var(--text3); font-family: var(--font-mono); }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: calc(100vh - 115px - 53px);
+  }
+
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 20px 20px 90px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    max-height: 100%;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+  .format-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+  }
+
+  .format-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text2);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 9px 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .format-btn:hover { border-color: var(--border2); color: var(--text); }
+  .format-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(163,11,0,0.06); }
+
+  .info-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  .info-val { font-family: var(--font-mono); font-size: 12px; color: var(--text); }
+
+  .export-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 16px;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.15s;
+    margin-top: 14px;
+  }
+  .export-btn:hover { background: var(--accent-dim); }
+  .export-btn:disabled { background: var(--border2); color: var(--text3); cursor: not-allowed; }
+
+  /* Canvas area */
+  .canvas-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 1px 1px, #1e1e1e 1px, transparent 0);
+    background-size: 24px 24px;
+    padding: 32px 32px calc(70px + 32px) 32px;
+    overflow: hidden;
+    min-width: 0;
+    min-height: 0;
+    cursor: pointer;
+  }
+
+  .placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    color: var(--text3);
+    pointer-events: none;
+    text-align: center;
+  }
+
+  .paste-hint {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .kbd-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  kbd {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-bottom-width: 3px;
+    border-radius: 5px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    padding: 6px 12px;
+    display: inline-block;
+  }
+
+  .paste-hint p {
+    font-size: 13px;
+    color: var(--text3);
+    line-height: 1.6;
+  }
+
+  .pulse-ring {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 1px solid var(--border2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    animation: pulse 2.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { border-color: var(--border2); transform: scale(1); }
+    50% { border-color: var(--border2); transform: scale(1.04); }
+  }
+
+  .canvas-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  #mainCanvas {
+    border-radius: 4px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    display: block;
+    max-width: calc(100vw - 280px - 64px);
+    max-height: calc(100vh - 115px - 53px - 70px - 96px);
+  }
+
+  .canvas-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  /* Flash overlay when paste detected */
+  .canvas-area.flash {
+    animation: flashIn 0.3s ease-out;
+  }
+
+  @keyframes flashIn {
+    0% { background-color: rgba(163,11,0,0.08); }
+    100% { background-color: transparent; }
+  }
+
+  .footer { position: fixed; bottom: 0; left: 0; }
+</style>
+</head>
+<body>
+
+<div id="importheader"></div>
+
+<header>
+  <h1>Paste Image to Download</h1>
+  <span>Paste any image from your clipboard and save it as a file</span>
+</header>
+
+<div class="workspace">
+  <div class="sidebar">
+
+    <div>
+      <div class="section-label">Save As</div>
+      <div class="format-grid">
+        <button class="format-btn active" data-fmt="png">PNG</button>
+        <button class="format-btn" data-fmt="jpg">JPG</button>
+        <button class="format-btn" data-fmt="webp">WebP</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Info</div>
+      <div class="info-block">
+        <div class="info-row"><span>Dimensions</span><span class="info-val" id="infoDimensions">—</span></div>
+        <div class="info-row"><span>File size</span><span class="info-val" id="infoSize">—</span></div>
+      </div>
+      <button class="export-btn" id="exportBtn" disabled>Download</button>
+    </div>
+
+  </div>
+
+  <div class="canvas-area" id="canvasArea">
+    <div class="placeholder" id="placeholder">
+      <div class="pulse-ring">📋</div>
+      <div class="paste-hint">
+        <div class="kbd-wrap">
+          <kbd>⌘</kbd><span style="color:var(--text3); font-size:13px;">+</span><kbd>V</kbd>
+        </div>
+        <p>Paste an image anywhere on this page<br>to load and download it</p>
+      </div>
+    </div>
+    <div class="canvas-wrap" id="canvasWrap" style="display:none;">
+      <span class="canvas-meta" id="canvasMeta"></span>
+      <canvas id="mainCanvas"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+const MIME = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp' };
+const EXT  = { png: 'png', jpg: 'jpg', webp: 'webp' };
+
+const state = {
+  image: null,
+  format: 'png',
+};
+
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+  return (b / (1024 * 1024)).toFixed(2) + ' MB';
+}
+
+function render() {
+  if (!state.image) return;
+  const canvas = document.getElementById('mainCanvas');
+  const img = state.image;
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext('2d');
+
+  if (state.format === 'jpg') {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  } else {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  ctx.drawImage(img, 0, 0);
+
+  document.getElementById('canvasMeta').textContent =
+    img.naturalWidth + ' × ' + img.naturalHeight + 'px';
+  document.getElementById('infoDimensions').textContent =
+    img.naturalWidth + ' × ' + img.naturalHeight;
+
+  const q = state.format === 'png' ? undefined : 0.92;
+  canvas.toBlob(blob => {
+    if (blob) document.getElementById('infoSize').textContent = formatBytes(blob.size);
+  }, MIME[state.format], q);
+}
+
+function loadImage(src) {
+  const img = new Image();
+  img.onload = () => {
+    state.image = img;
+    document.getElementById('placeholder').style.display = 'none';
+    document.getElementById('canvasWrap').style.display = 'flex';
+    document.getElementById('exportBtn').disabled = false;
+
+    // Flash the canvas area
+    const area = document.getElementById('canvasArea');
+    area.classList.remove('flash');
+    void area.offsetWidth;
+    area.classList.add('flash');
+
+    render();
+    downloadCurrent();
+  };
+  img.src = src;
+}
+
+function downloadCurrent() {
+  const canvas = document.getElementById('mainCanvas');
+  const q = state.format === 'png' ? undefined : 0.92;
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'pasted-image.' + EXT[state.format];
+    a.click();
+    URL.revokeObjectURL(url);
+  }, MIME[state.format], q);
+}
+
+function init() {
+  document.querySelectorAll('.format-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.format = btn.dataset.fmt;
+      render();
+    });
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    if (!state.image) return;
+    downloadCurrent();
+  });
+
+  // Paste anywhere on the page
+  document.addEventListener('paste', e => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        const url = URL.createObjectURL(file);
+        loadImage(url);
+        break;
+      }
+    }
+  });
+
+  // Also allow clicking the canvas area to trigger a paste prompt
+  document.getElementById('canvasArea').addEventListener('click', () => {
+    // Focus the page so paste works
+    document.body.focus();
+  });
+}
+
+init();
+</script>
+
+<div id="importfooter"></div>
+</body>
+</html>
