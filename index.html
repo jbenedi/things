@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JB Tools</title>
+<link rel="icon" type="image/png" href="https://jbenedict.com/assets/img/favicon.png">
+<script src="https://jbenedict.com/assets/js/jquery.js"></script>
+<script src="https://jbenedict.com/assets/js/main.js" type="text/javascript" defer></script>
+<link rel="stylesheet" media="screen" href="https://jbenedict.com/assets/css/main.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --surface2: #1f1f1f;
+    --border: #2a2a2a;
+    --border2: #333;
+    --text: #e8e8e8;
+    --text2: #888;
+    --text3: #555;
+    --accent: #a30b00;
+    --accent-dim: #8a0900;
+    --radius: 6px;
+    --font-sans: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    min-height: 100vh;
+    padding-top: 115px;
+    padding-bottom: calc(70px + 48px);
+  }
+
+  .page-header {
+    padding: 48px 48px 32px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .page-header h1 {
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .page-header p {
+    font-size: 13px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+  }
+
+  /* Content */
+  .content {
+    padding: 40px 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 48px;
+  }
+
+  .category-section {}
+
+  .category-title {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(163,11,0,0.3);
+  }
+
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 8px;
+  }
+
+  .tool-card {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    text-decoration: none;
+    transition: border-color 0.15s, background 0.15s;
+    cursor: pointer;
+    text-align: center;
+    align-items: center;
+  }
+
+  .tool-card:hover {
+    border-color: var(--accent);
+    background: rgba(163,11,0,0.04);
+  }
+
+  .tool-card:hover .tool-name { color: var(--accent); }
+
+  .tool-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .tool-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.3;
+    transition: color 0.15s;
+  }
+
+  .tool-desc {
+    font-size: 11px;
+    color: var(--text3);
+    line-height: 1.5;
+    text-align: center;
+  }
+
+  .footer { position: fixed; bottom: 0; left: 0; }
+</style>
+</head>
+<body>
+
+<div id="importheader"></div>
+
+<div class="page-header">
+  <h1>Tools</h1>
+  <p>A collection of web tools for artists and developers</p>
+</div>
+
+<div class="content" id="content">
+
+  <div class="category-section" data-category="image">
+    <div class="category-title">Image</div>
+    <div class="tools-grid">
+      <a class="tool-card" href="https://jbenedict.com/tools/mattegen">
+        <div class="tool-card-header">
+          <span class="tool-name">Matte Generator</span>
+          
+        </div>
+        <span class="tool-desc">Place non-square images onto a matted canvas with a custom background</span>
+      </a>
+      <a class="tool-card" href="https://jbenedict.com/tools/seamlessscroll">
+        <div class="tool-card-header">
+          <span class="tool-name">Seamless Scroll Generator</span>
+          
+        </div>
+        <span class="tool-desc">Split a wide image into slices for Instagram carousel scrolls</span>
+      </a>
+      <a class="tool-card" href="https://jbenedict.com/tools/socialcropper">
+        <div class="tool-card-header">
+          <span class="tool-name">Social Media Cropper</span>
+          
+        </div>
+        <span class="tool-desc">Crop images to preset aspect ratios for Instagram, Bluesky, and Threads</span>
+      </a>
+      <a class="tool-card" href="https://jbenedict.com/tools/watermarker">
+        <div class="tool-card-header">
+          <span class="tool-name">Watermarker</span>
+          
+        </div>
+        <span class="tool-desc">Overlay an image watermark onto photos with adjustable opacity and position</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="category-section" data-category="color">
+    <div class="category-title">Color</div>
+    <div class="tools-grid">
+      <a class="tool-card" href="https://jbenedict.com/tools/colorformats">
+        <div class="tool-card-header">
+          <span class="tool-name">Color Format Converter</span>
+          
+        </div>
+        <span class="tool-desc">Convert between HEX, RGB, HSL, and CMYK color formats</span>
+      </a>
+      <a class="tool-card" href="https://jbenedict.com/tools/gradientgen">
+        <div class="tool-card-header">
+          <span class="tool-name">Gradient Generator</span>
+          
+        </div>
+        <span class="tool-desc">Create and export linear, radial, and corner CSS gradients</span>
+      </a>
+      <a class="tool-card" href="https://jbenedict.com/tools/harmonygen">
+        <div class="tool-card-header">
+          <span class="tool-name">Harmony Generator</span>
+          
+        </div>
+        <span class="tool-desc">Generate complementary, triadic, analogous, and other color harmonies</span>
+      </a>
+      <a class="tool-card" href="https://jbenedict.com/tools/paletteextract">
+        <div class="tool-card-header">
+          <span class="tool-name">Palette Extractor</span>
+          
+        </div>
+        <span class="tool-desc">Extract a dominant color palette from any uploaded image</span>
+      </a>
+      <a class="tool-card" href="https://jbenedict.com/tools/palettegen">
+        <div class="tool-card-header">
+          <span class="tool-name">Palette Generator</span>
+          
+        </div>
+        <span class="tool-desc">Build and export a color palette from your own hand-picked colors</span>
+      </a>
+      <a class="tool-card" href="https://jbenedict.com/tools/colorpicker">
+        <div class="tool-card-header">
+          <span class="tool-name">Pixel Picker</span>
+          
+        </div>
+        <span class="tool-desc">Upload an image and sample the color of any pixel with HEX, RGB, and HSL readout</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="category-section" data-category="creative">
+    <div class="category-title">Creative</div>
+    <div class="tools-grid">
+      <a class="tool-card" href="https://jbenedict.com/tools/artenhance">
+        <div class="tool-card-header">
+          <span class="tool-name">Artwork Enhancer</span>
+          
+        </div>
+        <span class="tool-desc">Add color noise or film grain overlays to give artwork a textured, organic feel</span>
+      </a>
+      <a class="tool-card" href="https://jbenedict.com/tools/favicongen">
+        <div class="tool-card-header">
+          <span class="tool-name">Favicon Generator</span>
+          
+        </div>
+        <span class="tool-desc">Resize and export favicon PNGs at common sizes with browser and home screen previews</span>
+      </a>
+      <a class="tool-card" href="https://jbenedict.com/tools/imageclip">
+        <div class="tool-card-header">
+          <span class="tool-name">Image Clipper</span>
+          
+        </div>
+        <span class="tool-desc">Trim transparent edges from PNGs down to the tightest bounding box</span>
+      </a>
+      <a class="tool-card" href="https://jbenedict.com/tools/imageconvert">
+        <div class="tool-card-header">
+          <span class="tool-name">Image Converter</span>
+          
+        </div>
+        <span class="tool-desc">Convert and resize images between PNG, JPG, and WebP formats</span>
+      </a>
+      <a class="tool-card" href="https://jbenedict.com/tools/pastedownload">
+        <div class="tool-card-header">
+          <span class="tool-name">Paste Image to Download</span>
+          
+        </div>
+        <span class="tool-desc">Paste any image from your clipboard and instantly save it as a file</span>
+      </a>
+      <a class="tool-card" href="https://jbenedict.com/tools/svgtopng">
+        <div class="tool-card-header">
+          <span class="tool-name">SVG to PNG</span>
+          
+        </div>
+        <span class="tool-desc">Convert SVG files to high quality PNGs at 1×, 2×, or 4× scale</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="category-section" data-category="text">
+    <div class="category-title">Text</div>
+    <div class="tools-grid">
+      <a class="tool-card" href="https://jbenedict.com/tools/textdifference">
+        <div class="tool-card-header">
+          <span class="tool-name">Text Difference Comparator</span>
+          
+        </div>
+        <span class="tool-desc">Paste two blocks of text and see a highlighted diff of what changed</span>
+      </a>
+      <a class="tool-card" href="https://jbenedict.com/tools/wordcount">
+        <div class="tool-card-header">
+          <span class="tool-name">Word Counter</span>
+          
+        </div>
+        <span class="tool-desc">Count words, characters, sentences, paragraphs, and reading time</span>
+      </a>
+      <a class="tool-card" href="https://jbenedict.com/tools/textscratch">
+        <div class="tool-card-header">
+          <span class="tool-name">Text Scratchpad</span>
+          
+        </div>
+        <span class="tool-desc">Freeform text area with case conversion, sorting, find and replace, and more</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="category-section" data-category="code">
+    <div class="category-title">Code &amp; Data</div>
+    <div class="tools-grid">
+      <a class="tool-card" href="https://jbenedict.com/tools/barcodegen">
+        <div class="tool-card-header">
+          <span class="tool-name">Barcode Generator</span>
+          
+        </div>
+        <span class="tool-desc">Generate barcodes in common formats including Code 128, EAN, UPC, and more</span>
+      </a>
+      <a class="tool-card" href="https://jbenedict.com/tools/qrgen">
+        <div class="tool-card-header">
+          <span class="tool-name">QR Generator</span>
+          
+        </div>
+        <span class="tool-desc">Generate scannable QR codes from any URL or text string</span>
+      </a>
+      <a class="tool-card" href="https://jbenedict.com/tools/encodedecode">
+        <div class="tool-card-header">
+          <span class="tool-name">Encoding Tools</span>
+          
+        </div>
+        <span class="tool-desc">Encode and decode Base64, URL, Hex, Binary, and generate MD5/SHA hashes</span>
+      </a>
+    </div>
+  </div>
+
+  <script></script>
+
+<div id="importfooter"></div>
+</body>
+</html>
