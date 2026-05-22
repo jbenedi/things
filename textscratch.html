@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Text Scratchpad</title>
+<script src="https://jbenedict.com/assets/js/jquery.js"></script>
+<script src="https://jbenedict.com/assets/js/main.js" type="text/javascript" defer></script>
+<link rel="stylesheet" media="screen" href="https://jbenedict.com/assets/css/main.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --surface2: #1f1f1f;
+    --border: #2a2a2a;
+    --border2: #333;
+    --text: #e8e8e8;
+    --text2: #888;
+    --text3: #555;
+    --accent: #a30b00;
+    --accent-dim: #8a0900;
+    --radius: 6px;
+    --font-sans: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    padding-top: 115px;
+  }
+
+  header {
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  header h1 { font-size: 15px; font-weight: 500; letter-spacing: 0.02em; }
+  header span { font-size: 12px; color: var(--text3); font-family: var(--font-mono); }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: calc(100vh - 115px - 53px);
+  }
+
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 20px 20px 90px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    max-height: 100%;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+  .tool-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .tool-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text2);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    padding: 8px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .tool-btn:hover { border-color: var(--border2); color: var(--text); }
+  .tool-btn:active { background: var(--surface); }
+
+  .tool-btn .shortcut {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text3);
+  }
+
+  .find-replace {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .fr-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 6px 8px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .fr-input:focus { border-color: var(--border2); }
+  .fr-input::placeholder { color: var(--text3); }
+
+  .fr-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text2);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    padding: 7px 10px;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .fr-btn:hover { border-color: var(--border2); color: var(--text); }
+
+  .stats-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+    padding: 4px 0;
+  }
+
+  .copy-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 16px;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.15s;
+  }
+  .copy-btn:hover { background: var(--accent-dim); }
+  .copy-btn.copied { background: #2d7a2d; }
+
+  /* Editor */
+  .editor-pane {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .editor-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    gap: 10px;
+  }
+
+  .pane-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    font-family: var(--font-mono);
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .clear-btn {
+    background: none;
+    border: none;
+    color: var(--text3);
+    font-size: 11px;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    transition: color 0.15s;
+    padding: 0;
+  }
+  .clear-btn:hover { color: var(--accent); }
+
+  .font-toggle {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text3);
+    font-size: 11px;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .font-toggle:hover { border-color: var(--border2); color: var(--text); }
+  .font-toggle.mono { font-family: var(--font-mono); }
+
+  textarea {
+    flex: 1;
+    background: var(--surface);
+    border: none;
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.7;
+    padding: 20px 24px calc(70px + 20px) 24px;
+    resize: none;
+    outline: none;
+    min-height: 0;
+    width: 100%;
+    tab-size: 2;
+  }
+  textarea::placeholder { color: var(--text3); }
+
+  .toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 8px 14px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 100;
+  }
+  .toast.show { opacity: 1; }
+
+  .footer { position: fixed; bottom: 0; left: 0; }
+</style>
+</head>
+<body>
+
+<div id="importheader"></div>
+
+<header>
+  <h1>Text Scratchpad</h1>
+  <span>Freeform text with manipulation tools</span>
+</header>
+
+<div class="workspace">
+  <div class="sidebar">
+
+    <div>
+      <div class="section-label">Case</div>
+      <div class="tool-group">
+        <button class="tool-btn" data-action="upper">UPPERCASE</button>
+        <button class="tool-btn" data-action="lower">lowercase</button>
+        <button class="tool-btn" data-action="title">Title Case</button>
+        <button class="tool-btn" data-action="sentence">Sentence case</button>
+        <button class="tool-btn" data-action="alternate">aLtErNaTe CaSe</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Lines</div>
+      <div class="tool-group">
+        <button class="tool-btn" data-action="sort-az">Sort A → Z</button>
+        <button class="tool-btn" data-action="sort-za">Sort Z → A</button>
+        <button class="tool-btn" data-action="reverse-lines">Reverse lines</button>
+        <button class="tool-btn" data-action="dedupe">Remove duplicates</button>
+        <button class="tool-btn" data-action="shuffle">Shuffle lines</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Clean Up</div>
+      <div class="tool-group">
+        <button class="tool-btn" data-action="trim">Trim whitespace</button>
+        <button class="tool-btn" data-action="trim-lines">Trim each line</button>
+        <button class="tool-btn" data-action="remove-blank">Remove blank lines</button>
+        <button class="tool-btn" data-action="remove-extra-spaces">Collapse spaces</button>
+        <button class="tool-btn" data-action="strip-html">Strip HTML tags</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Transform</div>
+      <div class="tool-group">
+        <button class="tool-btn" data-action="reverse">Reverse text</button>
+        <button class="tool-btn" data-action="slug">slugify-text</button>
+        <button class="tool-btn" data-action="add-numbers">Add line numbers</button>
+        <button class="tool-btn" data-action="remove-numbers">Remove line numbers</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Find &amp; Replace</div>
+      <div class="find-replace">
+        <input type="text" class="fr-input" id="findInput" placeholder="Find…">
+        <input type="text" class="fr-input" id="replaceInput" placeholder="Replace with…">
+        <button class="fr-btn" id="replaceBtn">Replace All</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="stats-row">
+        <span id="statWords">0 words</span>
+        <span id="statChars">0 chars</span>
+        <span id="statLines">0 lines</span>
+      </div>
+      <button class="copy-btn" id="copyBtn">Copy All</button>
+    </div>
+
+  </div>
+
+  <div class="editor-pane">
+    <div class="editor-header">
+      <span class="pane-label">Scratchpad</span>
+      <div class="header-actions">
+        <button class="font-toggle" id="fontToggle">Sans</button>
+        <button class="clear-btn" id="clearBtn">Clear</button>
+      </div>
+    </div>
+    <textarea id="mainText" placeholder="Start typing or paste text here…" spellcheck="true"></textarea>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let useMono = false;
+
+function get() { return document.getElementById('mainText').value; }
+function set(v) {
+  document.getElementById('mainText').value = v;
+  updateStats();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1500);
+}
+
+function updateStats() {
+  const text = get();
+  const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+  const chars = text.length;
+  const lines = text === '' ? 0 : text.split('\n').length;
+  document.getElementById('statWords').textContent = words + ' words';
+  document.getElementById('statChars').textContent = chars + ' chars';
+  document.getElementById('statLines').textContent = lines + ' lines';
+}
+
+function toTitleCase(str) {
+  return str.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+}
+
+function toSentenceCase(str) {
+  return str.replace(/(^\s*\w|[.!?]\s*\w)/g, c => c.toUpperCase())
+            .replace(/([A-Z])/g, (m, p, offset, s) => offset > 0 && s[offset - 1] !== '.' && s[offset - 1] !== '!' && s[offset - 1] !== '?' && s[offset - 1] !== ' ' ? m.toLowerCase() : m);
+}
+
+function toSentenceCaseSimple(str) {
+  return str.split('\n').map(line => {
+    if (!line.trim()) return line;
+    return line.charAt(0).toUpperCase() + line.slice(1)
+      .split('. ').map((s, i) => i === 0 ? s : s.charAt(0).toUpperCase() + s.slice(1)).join('. ');
+  }).join('\n');
+}
+
+function toAlternate(str) {
+  let i = 0;
+  return str.split('').map(c => c.match(/[a-z]/i) ? (i++ % 2 === 0 ? c.toLowerCase() : c.toUpperCase()) : c).join('');
+}
+
+function slugify(str) {
+  return str.toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+const ACTIONS = {
+  'upper':             t => t.toUpperCase(),
+  'lower':             t => t.toLowerCase(),
+  'title':             t => toTitleCase(t),
+  'sentence':          t => toSentenceCaseSimple(t),
+  'alternate':         t => toAlternate(t),
+  'sort-az':           t => t.split('\n').sort((a,b) => a.localeCompare(b)).join('\n'),
+  'sort-za':           t => t.split('\n').sort((a,b) => b.localeCompare(a)).join('\n'),
+  'reverse-lines':     t => t.split('\n').reverse().join('\n'),
+  'dedupe':            t => [...new Set(t.split('\n'))].join('\n'),
+  'shuffle':           t => t.split('\n').sort(() => Math.random() - 0.5).join('\n'),
+  'trim':              t => t.trim(),
+  'trim-lines':        t => t.split('\n').map(l => l.trim()).join('\n'),
+  'remove-blank':      t => t.split('\n').filter(l => l.trim().length > 0).join('\n'),
+  'remove-extra-spaces': t => t.replace(/[ \t]+/g, ' '),
+  'strip-html':        t => t.replace(/<[^>]*>/g, ''),
+  'reverse':           t => t.split('').reverse().join(''),
+  'slug':              t => slugify(t),
+  'add-numbers':       t => t.split('\n').map((l, i) => `${i + 1}. ${l}`).join('\n'),
+  'remove-numbers':    t => t.split('\n').map(l => l.replace(/^\d+[.)]\s*/, '')).join('\n'),
+};
+
+function init() {
+  document.getElementById('mainText').addEventListener('input', updateStats);
+
+  document.querySelectorAll('.tool-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const action = ACTIONS[btn.dataset.action];
+      if (!action) return;
+      const result = action(get());
+      set(result);
+      showToast(btn.textContent.trim() + ' applied');
+    });
+  });
+
+  document.getElementById('replaceBtn').addEventListener('click', () => {
+    const find = document.getElementById('findInput').value;
+    const replace = document.getElementById('replaceInput').value;
+    if (!find) return;
+    const count = (get().split(find).length - 1);
+    set(get().split(find).join(replace));
+    showToast(`Replaced ${count} occurrence${count !== 1 ? 's' : ''}`);
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    set('');
+    showToast('Cleared');
+  });
+
+  document.getElementById('copyBtn').addEventListener('click', () => {
+    navigator.clipboard.writeText(get()).then(() => {
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy All'; btn.classList.remove('copied'); }, 1500);
+    });
+  });
+
+  document.getElementById('fontToggle').addEventListener('click', () => {
+    useMono = !useMono;
+    const ta = document.getElementById('mainText');
+    const btn = document.getElementById('fontToggle');
+    ta.style.fontFamily = useMono ? 'var(--font-mono)' : 'var(--font-sans)';
+    btn.textContent = useMono ? 'Mono' : 'Sans';
+    btn.classList.toggle('mono', useMono);
+  });
+
+  // Allow Tab key in textarea
+  document.getElementById('mainText').addEventListener('keydown', e => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const ta = e.target;
+      const start = ta.selectionStart;
+      const end = ta.selectionEnd;
+      ta.value = ta.value.slice(0, start) + '  ' + ta.value.slice(end);
+      ta.selectionStart = ta.selectionEnd = start + 2;
+      updateStats();
+    }
+  });
+
+  updateStats();
+}
+
+init();
+</script>
+
+<div id="importfooter"></div>
+</body>
+</html>
