@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Encoding Tools</title>
+<script src="https://jbenedict.com/assets/js/jquery.js"></script>
+<script src="https://jbenedict.com/assets/js/main.js" type="text/javascript" defer></script>
+<link rel="stylesheet" media="screen" href="https://jbenedict.com/assets/css/main.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e; --surface: #161616; --surface2: #1f1f1f;
+    --border: #2a2a2a; --border2: #333;
+    --text: #e8e8e8; --text2: #888; --text3: #555;
+    --accent: #a30b00; --accent-dim: #8a0900;
+    --radius: 6px;
+    --font-sans: 'DM Sans', sans-serif; --font-mono: 'DM Mono', monospace;
+  }
+
+  body { background: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 14px; min-height: 100vh; display: grid; grid-template-rows: auto 1fr; padding-top: 115px; }
+  header { padding: 18px 28px; border-bottom: 1px solid var(--border); display: flex; align-items: baseline; gap: 14px; }
+  header h1 { font-size: 15px; font-weight: 500; letter-spacing: 0.02em; }
+  header span { font-size: 12px; color: var(--text3); font-family: var(--font-mono); }
+
+  .workspace { display: grid; grid-template-columns: 280px 1fr; height: calc(100vh - 115px - 53px); }
+
+  .sidebar { border-right: 1px solid var(--border); padding: 20px 20px 90px 20px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; max-height: 100%; }
+
+  .section-label { font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); margin-bottom: 6px; margin-top: 12px; }
+  .section-label:first-child { margin-top: 0; }
+  .divider { height: 1px; background: var(--border); margin: 6px 0; }
+
+  .enc-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text2); font-family: var(--font-sans); font-size: 12px; padding: 8px 10px; cursor: pointer; transition: all 0.15s; text-align: left; width: 100%; display: flex; justify-content: space-between; align-items: center; }
+  .enc-btn:hover { border-color: var(--border2); color: var(--text); }
+  .enc-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(163,11,0,0.06); }
+
+  .enc-badge { font-size: 9px; font-family: var(--font-mono); padding: 2px 5px; border-radius: 3px; background: var(--surface); color: var(--text3); border: 1px solid var(--border); }
+  .enc-btn.active .enc-badge { border-color: rgba(163,11,0,0.3); color: rgba(163,11,0,0.7); background: rgba(163,11,0,0.06); }
+
+  /* Main area */
+  .panes-wrap { position: relative; display: flex; flex-direction: column; min-height: 0; }
+
+  /* For hash mode — single output per hash */
+  .hash-area { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; padding: 20px; gap: 12px; padding-bottom: calc(70px + 20px); }
+
+  .hash-row { display: flex; flex-direction: column; gap: 4px; }
+
+  .hash-label-row { display: flex; justify-content: space-between; align-items: center; }
+  .hash-alg { font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); font-family: var(--font-mono); }
+  .hash-copy { background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--text3); font-family: var(--font-mono); font-size: 10px; padding: 2px 8px; cursor: pointer; transition: all 0.15s; }
+  .hash-copy:hover { border-color: var(--border2); color: var(--text); }
+  .hash-copy.copied { border-color: var(--accent); color: var(--accent); }
+
+  .hash-val { font-family: var(--font-mono); font-size: 12px; color: var(--text); background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; word-break: break-all; line-height: 1.5; user-select: all; cursor: text; }
+  .hash-val.empty { color: var(--text3); font-style: italic; }
+
+  .hash-input-wrap { padding: 0 20px 16px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .hash-input-wrap textarea { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-family: var(--font-mono); font-size: 13px; padding: 10px; width: 100%; resize: none; outline: none; line-height: 1.5; height: 70px; margin-top: 12px; }
+  .hash-input-wrap textarea::placeholder { color: var(--text3); }
+  .hash-input-label { font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); font-family: var(--font-mono); padding-top: 16px; display: block; }
+
+  /* Encode/decode panes */
+  .text-pane { display: flex; flex-direction: column; border-bottom: 1px solid var(--border); min-height: 0; flex: 1; }
+  .text-pane:last-child { border-bottom: none; }
+
+  .pane-header { padding: 10px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .pane-label { font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); font-family: var(--font-mono); }
+  .pane-actions { display: flex; gap: 8px; align-items: center; }
+
+  .action-btn { background: none; border: none; color: var(--text3); font-size: 11px; font-family: var(--font-sans); cursor: pointer; transition: color 0.15s; padding: 0; }
+  .action-btn:hover { color: var(--accent); }
+
+  .copy-btn-sm { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--text3); font-family: var(--font-mono); font-size: 10px; padding: 3px 8px; cursor: pointer; transition: all 0.15s; }
+  .copy-btn-sm:hover { border-color: var(--border2); color: var(--text); }
+  .copy-btn-sm.copied { border-color: var(--accent); color: var(--accent); }
+
+  .swap-btn { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: var(--surface2); border: 1px solid var(--border2); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; color: var(--text2); transition: all 0.15s; z-index: 10; }
+  .swap-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  textarea { flex: 1; background: var(--surface); border: none; color: var(--text); font-family: var(--font-mono); font-size: 13px; line-height: 1.6; padding: 14px 16px; resize: none; outline: none; min-height: 0; width: 100%; }
+  textarea::placeholder { color: var(--text3); }
+
+  .error-banner { background: rgba(163,11,0,0.12); border-top: 1px solid rgba(163,11,0,0.3); color: var(--accent); font-family: var(--font-mono); font-size: 11px; padding: 6px 16px; flex-shrink: 0; display: none; }
+
+  .footer { position: fixed; bottom: 0; left: 0; }
+</style>
+</head>
+<body>
+
+<div id="importheader"></div>
+
+<header>
+  <h1>Encoding Tools</h1>
+  <span>Encode, decode, and hash text</span>
+</header>
+
+<div class="workspace">
+  <div class="sidebar">
+
+    <div class="section-label">Encoding</div>
+    <button class="enc-btn active" data-enc="base64-encode">
+      Base64 Encode<span class="enc-badge">btoa</span>
+    </button>
+    <button class="enc-btn" data-enc="base64-decode">
+      Base64 Decode<span class="enc-badge">atob</span>
+    </button>
+    <button class="enc-btn" data-enc="url">
+      URL Encode<span class="enc-badge">%XX</span>
+    </button>
+    <button class="enc-btn" data-enc="url-decode">
+      URL Decode<span class="enc-badge">%XX</span>
+    </button>
+
+    <div class="divider"></div>
+
+    <div class="section-label">Binary / Numeric</div>
+    <button class="enc-btn" data-enc="hex">
+      Hex<span class="enc-badge">0x</span>
+    </button>
+    <button class="enc-btn" data-enc="hex-decode">
+      Hex Decode<span class="enc-badge">0x</span>
+    </button>
+    <button class="enc-btn" data-enc="binary">
+      Binary<span class="enc-badge">01</span>
+    </button>
+    <button class="enc-btn" data-enc="binary-decode">
+      Binary Decode<span class="enc-badge">01</span>
+    </button>
+
+    <div class="divider"></div>
+
+    <div class="section-label">Hash Generation</div>
+    <button class="enc-btn" data-enc="hash">
+      Hash<span class="enc-badge">SHA/MD5</span>
+    </button>
+
+  </div>
+
+  <div class="panes-wrap" id="panesWrap">
+
+    <!-- Encode/decode view -->
+    <div id="encodeView" style="display:flex; flex-direction:column; flex:1; min-height:0;">
+      <div class="text-pane">
+        <div class="pane-header">
+          <span class="pane-label" id="labelInput">Plain Text</span>
+          <div class="pane-actions">
+            <button class="action-btn" id="clearInput">Clear</button>
+            <button class="copy-btn-sm" id="copyInput">Copy</button>
+          </div>
+        </div>
+        <textarea id="inputText" placeholder="Type or paste text…" spellcheck="false"></textarea>
+      </div>
+
+      <div class="text-pane">
+        <div class="pane-header">
+          <span class="pane-label" id="labelOutput">Base64 Encoded</span>
+          <div class="pane-actions">
+            <button class="copy-btn-sm" id="copyOutput">Copy</button>
+          </div>
+        </div>
+        <textarea id="outputText" placeholder="Output appears here…" spellcheck="false" readonly></textarea>
+        <div class="error-banner" id="errorBanner"></div>
+      </div>
+    </div>
+
+    <!-- Hash view -->
+    <div id="hashView" style="display:none; flex-direction:column; flex:1; min-height:0;">
+      <div class="hash-input-wrap">
+        <span class="hash-input-label">Input</span>
+        <textarea id="hashInput" placeholder="Type or paste text to hash…" spellcheck="false"></textarea>
+      </div>
+      <div class="hash-area" id="hashArea"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const ENCODERS = {
+  'base64-encode': {
+    inputLabel: 'Plain Text', outputLabel: 'Base64 Encoded',
+    fn: t => btoa(unescape(encodeURIComponent(t)))
+  },
+  'base64-decode': {
+    inputLabel: 'Base64 Encoded', outputLabel: 'Plain Text',
+    fn: t => { try { return decodeURIComponent(escape(atob(t.trim()))); } catch { throw new Error('Invalid Base64 string'); } }
+  },
+  'url': {
+    inputLabel: 'Plain Text', outputLabel: 'URL Encoded',
+    fn: t => encodeURIComponent(t)
+  },
+  'url-decode': {
+    inputLabel: 'URL Encoded', outputLabel: 'Plain Text',
+    fn: t => { try { return decodeURIComponent(t); } catch { throw new Error('Invalid URL encoding'); } }
+  },
+  'hex': {
+    inputLabel: 'Plain Text', outputLabel: 'Hex',
+    fn: t => Array.from(t).map(c => c.charCodeAt(0).toString(16).padStart(2,'0')).join(' ')
+  },
+  'hex-decode': {
+    inputLabel: 'Hex', outputLabel: 'Plain Text',
+    fn: t => { try { return t.trim().split(/\s+/).map(h => String.fromCharCode(parseInt(h,16))).join(''); } catch { throw new Error('Invalid hex string'); } }
+  },
+  'binary': {
+    inputLabel: 'Plain Text', outputLabel: 'Binary',
+    fn: t => Array.from(t).map(c => c.charCodeAt(0).toString(2).padStart(8,'0')).join(' ')
+  },
+  'binary-decode': {
+    inputLabel: 'Binary', outputLabel: 'Plain Text',
+    fn: t => { try { return t.trim().split(/\s+/).map(b => String.fromCharCode(parseInt(b,2))).join(''); } catch { throw new Error('Invalid binary string'); } }
+  },
+};
+
+const HASH_ALGOS = ['MD5', 'SHA-1', 'SHA-256', 'SHA-512'];
+
+// Simple MD5 implementation
+function md5(str) {
+  function safeAdd(x,y){var lsw=(x&0xFFFF)+(y&0xFFFF);var msw=(x>>16)+(y>>16)+(lsw>>16);return(msw<<16)|(lsw&0xFFFF)}
+  function bitRotateLeft(num,cnt){return(num<<cnt)|(num>>>(32-cnt))}
+  function md5cmn(q,a,b,x,s,t){return safeAdd(bitRotateLeft(safeAdd(safeAdd(a,q),safeAdd(x,t)),s),b)}
+  function md5ff(a,b,c,d,x,s,t){return md5cmn((b&c)|(~b&d),a,b,x,s,t)}
+  function md5gg(a,b,c,d,x,s,t){return md5cmn((b&d)|(c&~d),a,b,x,s,t)}
+  function md5hh(a,b,c,d,x,s,t){return md5cmn(b^c^d,a,b,x,s,t)}
+  function md5ii(a,b,c,d,x,s,t){return md5cmn(c^(b|~d),a,b,x,s,t)}
+  function md5blks(s){var i,blks=[];for(i=0;i<s.length+8;i+=16)blks[i>>4]=0;blks[s.length>>4]|=0x80<<(s.length%4<<3);blks[(((s.length+8)>>6)+1)<<4]=s.length<<3;return blks}
+  function rhex(n){var s='';for(var i=0;i<4;i++)s+=('0'+((n>>>(i*8+4))&0x0F).toString(16))+('' +((n>>>(i*8))&0x0F).toString(16));return s}
+  function hex(x){for(var i=0;i<x.length;i++)x[i]=rhex(x[i]);return x.join('')}
+  function utf8Encode(s){return unescape(encodeURIComponent(s))}
+  str=utf8Encode(str);
+  var m=md5blks(str),a=1732584193,b=-271733879,c=-1732584194,d=271733878,i;
+  for(i=0;i<m.length;i+=16){var olda=a,oldb=b,oldc=c,oldd=d;
+    a=md5ff(a,b,c,d,m[i],7,-680876936);d=md5ff(d,a,b,c,m[i+1],12,-389564586);c=md5ff(c,d,a,b,m[i+2],17,606105819);b=md5ff(b,c,d,a,m[i+3],22,-1044525330);
+    a=md5ff(a,b,c,d,m[i+4],7,-176418897);d=md5ff(d,a,b,c,m[i+5],12,1200080426);c=md5ff(c,d,a,b,m[i+6],17,-1473231341);b=md5ff(b,c,d,a,m[i+7],22,-45705983);
+    a=md5ff(a,b,c,d,m[i+8],7,1770035416);d=md5ff(d,a,b,c,m[i+9],12,-1958414417);c=md5ff(c,d,a,b,m[i+10],17,-42063);b=md5ff(b,c,d,a,m[i+11],22,-1990404162);
+    a=md5ff(a,b,c,d,m[i+12],7,1804603682);d=md5ff(d,a,b,c,m[i+13],12,-40341101);c=md5ff(c,d,a,b,m[i+14],17,-1502002290);b=md5ff(b,c,d,a,m[i+15],22,1236535329);
+    a=md5gg(a,b,c,d,m[i+1],5,-165796510);d=md5gg(d,a,b,c,m[i+6],9,-1069501632);c=md5gg(c,d,a,b,m[i+11],14,643717713);b=md5gg(b,c,d,a,m[i],20,-373897302);
+    a=md5gg(a,b,c,d,m[i+5],5,-701558691);d=md5gg(d,a,b,c,m[i+10],9,38016083);c=md5gg(c,d,a,b,m[i+15],14,-660478335);b=md5gg(b,c,d,a,m[i+4],20,-405537848);
+    a=md5gg(a,b,c,d,m[i+9],5,568446438);d=md5gg(d,a,b,c,m[i+14],9,-1019803690);c=md5gg(c,d,a,b,m[i+3],14,-187363961);b=md5gg(b,c,d,a,m[i+8],20,1163531501);
+    a=md5gg(a,b,c,d,m[i+13],5,-1444681467);d=md5gg(d,a,b,c,m[i+2],9,-51403784);c=md5gg(c,d,a,b,m[i+7],14,1735328473);b=md5gg(b,c,d,a,m[i+12],20,-1926607734);
+    a=md5hh(a,b,c,d,m[i+5],4,-378558);d=md5hh(d,a,b,c,m[i+8],11,-2022574463);c=md5hh(c,d,a,b,m[i+11],16,1839030562);b=md5hh(b,c,d,a,m[i+14],23,-35309556);
+    a=md5hh(a,b,c,d,m[i+1],4,-1530992060);d=md5hh(d,a,b,c,m[i+4],11,1272893353);c=md5hh(c,d,a,b,m[i+7],16,-155497632);b=md5hh(b,c,d,a,m[i+10],23,-1094730640);
+    a=md5hh(a,b,c,d,m[i+13],4,681279174);d=md5hh(d,a,b,c,m[i],11,-358537222);c=md5hh(c,d,a,b,m[i+3],16,-722521979);b=md5hh(b,c,d,a,m[i+6],23,76029189);
+    a=md5hh(a,b,c,d,m[i+9],4,-640364487);d=md5hh(d,a,b,c,m[i+12],11,-421815835);c=md5hh(c,d,a,b,m[i+15],16,530742520);b=md5hh(b,c,d,a,m[i+2],23,-995338651);
+    a=md5ii(a,b,c,d,m[i],6,-198630844);d=md5ii(d,a,b,c,m[i+7],10,1126891415);c=md5ii(c,d,a,b,m[i+14],15,-1416354905);b=md5ii(b,c,d,a,m[i+5],21,-57434055);
+    a=md5ii(a,b,c,d,m[i+12],6,1700485571);d=md5ii(d,a,b,c,m[i+3],10,-1894986606);c=md5ii(c,d,a,b,m[i+10],15,-1051523);b=md5ii(b,c,d,a,m[i+1],21,-2054922799);
+    a=md5ii(a,b,c,d,m[i+8],6,1873313359);d=md5ii(d,a,b,c,m[i+15],10,-30611744);c=md5ii(c,d,a,b,m[i+6],15,-1560198380);b=md5ii(b,c,d,a,m[i+13],21,1309151649);
+    a=md5ii(a,b,c,d,m[i+4],6,-145523070);d=md5ii(d,a,b,c,m[i+11],10,-1120210379);c=md5ii(c,d,a,b,m[i+2],15,718787259);b=md5ii(b,c,d,a,m[i+9],21,-343485551);
+    a=safeAdd(a,olda);b=safeAdd(b,oldb);c=safeAdd(c,oldc);d=safeAdd(d,oldd);
+  }
+  return hex([a,b,c,d]);
+}
+
+async function sha(alg, str) {
+  const enc = new TextEncoder();
+  const buf = await crypto.subtle.digest(alg, enc.encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+const state = { enc: 'base64-encode' };
+
+function isHashMode() { return state.enc === 'hash'; }
+
+function process() {
+  const input = document.getElementById('inputText').value;
+  const errorBanner = document.getElementById('errorBanner');
+  const enc = ENCODERS[state.enc];
+  if (!enc) return;
+
+  if (!input) {
+    document.getElementById('outputText').value = '';
+    errorBanner.style.display = 'none';
+    return;
+  }
+
+  try {
+    document.getElementById('outputText').value = enc.fn(input);
+    errorBanner.style.display = 'none';
+  } catch (e) {
+    document.getElementById('outputText').value = '';
+    errorBanner.textContent = e.message;
+    errorBanner.style.display = 'block';
+  }
+}
+
+async function processHash() {
+  const input = document.getElementById('hashInput').value;
+  const area = document.getElementById('hashArea');
+
+  if (!input) {
+    area.querySelectorAll('.hash-val').forEach(el => {
+      el.textContent = '—';
+      el.classList.add('empty');
+    });
+    return;
+  }
+
+  const results = {
+    'MD5': md5(input),
+    'SHA-1': await sha('SHA-1', input),
+    'SHA-256': await sha('SHA-256', input),
+    'SHA-512': await sha('SHA-512', input),
+  };
+
+  HASH_ALGOS.forEach(alg => {
+    const val = document.getElementById('hash-' + alg.replace('-',''));
+    if (val) {
+      val.textContent = results[alg];
+      val.classList.remove('empty');
+    }
+  });
+}
+
+function buildHashView() {
+  const area = document.getElementById('hashArea');
+  area.innerHTML = '';
+  HASH_ALGOS.forEach(alg => {
+    const row = document.createElement('div');
+    row.className = 'hash-row';
+
+    const labelRow = document.createElement('div');
+    labelRow.className = 'hash-label-row';
+
+    const label = document.createElement('span');
+    label.className = 'hash-alg';
+    label.textContent = alg;
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'hash-copy';
+    copyBtn.textContent = 'Copy';
+    copyBtn.addEventListener('click', () => {
+      const val = document.getElementById('hash-' + alg.replace('-','')).textContent;
+      if (val === '—') return;
+      navigator.clipboard.writeText(val).then(() => {
+        copyBtn.textContent = 'Copied!';
+        copyBtn.classList.add('copied');
+        setTimeout(() => { copyBtn.textContent = 'Copy'; copyBtn.classList.remove('copied'); }, 1500);
+      });
+    });
+
+    labelRow.appendChild(label);
+    labelRow.appendChild(copyBtn);
+
+    const val = document.createElement('div');
+    val.className = 'hash-val empty';
+    val.id = 'hash-' + alg.replace('-','');
+    val.textContent = '—';
+
+    row.appendChild(labelRow);
+    row.appendChild(val);
+    area.appendChild(row);
+  });
+}
+
+function updateLabels() {
+  if (isHashMode()) return;
+  const enc = ENCODERS[state.enc];
+  if (!enc) return;
+  document.getElementById('labelInput').textContent = enc.inputLabel;
+  document.getElementById('labelOutput').textContent = enc.outputLabel;
+}
+
+function switchMode() {
+  const isHash = isHashMode();
+  document.getElementById('encodeView').style.display = isHash ? 'none' : 'flex';
+  document.getElementById('hashView').style.display = isHash ? 'flex' : 'none';
+}
+
+function copyText(inputId, btnId) {
+  const el = document.getElementById(inputId);
+  const text = el.value;
+  if (!text) return;
+  const btn = document.getElementById(btnId);
+
+  const doFeedback = () => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  };
+
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(doFeedback).catch(() => fallbackCopy(el, doFeedback));
+  } else {
+    fallbackCopy(el, doFeedback);
+  }
+}
+
+function fallbackCopy(el, cb) {
+  el.select();
+  el.setSelectionRange(0, 99999);
+  try { document.execCommand('copy'); cb(); } catch {}
+  window.getSelection()?.removeAllRanges();
+}
+
+function resetInputs() {
+  document.getElementById('inputText').value = '';
+  document.getElementById('outputText').value = '';
+  document.getElementById('errorBanner').style.display = 'none';
+  document.getElementById('hashInput').value = '';
+  document.querySelectorAll('.hash-val').forEach(el => {
+    el.textContent = '—';
+    el.classList.add('empty');
+  });
+}
+
+function init() {
+  buildHashView();
+
+  document.querySelectorAll('.enc-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.enc-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.enc = btn.dataset.enc;
+      resetInputs();
+      switchMode();
+      updateLabels();
+      if (!isHashMode()) process();
+    });
+  });
+
+  document.getElementById('inputText').addEventListener('input', process);
+  document.getElementById('hashInput').addEventListener('input', processHash);
+
+  document.getElementById('clearInput').addEventListener('click', () => {
+    document.getElementById('inputText').value = '';
+    document.getElementById('outputText').value = '';
+    document.getElementById('errorBanner').style.display = 'none';
+  });
+  document.getElementById('copyInput').addEventListener('click', () => copyText('inputText', 'copyInput'));
+  document.getElementById('copyOutput').addEventListener('click', () => copyText('outputText', 'copyOutput'));
+
+  updateLabels();
+}
+
+init();
+</script>
+
+<div id="importfooter"></div>
+</body>
+</html>
