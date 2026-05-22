@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Clipper</title>
+<script src="https://jbenedict.com/assets/js/jquery.js"></script>
+<script src="https://jbenedict.com/assets/js/main.js" type="text/javascript" defer></script>
+<link rel="stylesheet" media="screen" href="https://jbenedict.com/assets/css/main.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --surface2: #1f1f1f;
+    --border: #2a2a2a;
+    --border2: #333;
+    --text: #e8e8e8;
+    --text2: #888;
+    --text3: #555;
+    --accent: #a30b00;
+    --accent-dim: #8a0900;
+    --radius: 6px;
+    --font-sans: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    padding-top: 115px;
+  }
+
+  header {
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  header h1 { font-size: 15px; font-weight: 500; letter-spacing: 0.02em; }
+  header span { font-size: 12px; color: var(--text3); font-family: var(--font-mono); }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: calc(100vh - 115px - 53px);
+  }
+
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 20px 20px 90px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    max-height: 100%;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+  .drop-zone {
+    border: 1px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    background: var(--surface);
+  }
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(163,11,0,0.04);
+  }
+  .drop-zone input { display: none; }
+  .drop-zone .icon { font-size: 24px; color: var(--text3); margin-bottom: 8px; display: block; }
+  .drop-zone p { color: var(--text2); font-size: 12px; line-height: 1.5; }
+  .drop-zone p strong { color: var(--text); font-weight: 400; }
+
+  .range-group { display: flex; flex-direction: column; gap: 6px; }
+  .range-header { display: flex; justify-content: space-between; align-items: center; }
+  .range-header label { font-size: 12px; color: var(--text2); }
+  .range-val { font-family: var(--font-mono); font-size: 12px; color: var(--accent); min-width: 24px; text-align: right; }
+
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 2px;
+    background: var(--border2); outline: none; border-radius: 2px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 14px; height: 14px;
+    background: var(--accent); border-radius: 50%; cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px;
+    background: var(--accent); border-radius: 50%; cursor: pointer; border: none;
+  }
+
+  .info-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  .info-val {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  .info-val.saved { color: #4caf50; }
+
+  .export-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 16px;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.15s;
+    margin-top: 14px;
+  }
+  .export-btn:hover { background: var(--accent-dim); }
+  .export-btn:disabled { background: var(--border2); color: var(--text3); cursor: not-allowed; }
+
+  /* Canvas area */
+  .canvas-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 1px 1px, #1e1e1e 1px, transparent 0);
+    background-size: 24px 24px;
+    padding: 32px 32px calc(70px + 32px) 32px;
+    overflow: hidden;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: var(--text3);
+  }
+  .placeholder svg { opacity: 0.2; }
+  .placeholder p { font-size: 13px; text-align: center; line-height: 1.6; }
+
+  .canvas-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    max-width: 100%;
+  }
+
+  /* Checkerboard background to show transparency */
+  .canvas-checker {
+    background-image:
+      linear-gradient(45deg, #2a2a2a 25%, transparent 25%),
+      linear-gradient(-45deg, #2a2a2a 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #2a2a2a 75%),
+      linear-gradient(-45deg, transparent 75%, #2a2a2a 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+    border-radius: 4px;
+    display: inline-block;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+  }
+
+  canvas {
+    border-radius: 4px;
+    display: block;
+    max-width: calc(100vw - 280px - 64px);
+    max-height: calc(100vh - 115px - 53px - 70px - 160px);
+    width: auto;
+    height: auto;
+  }
+
+  .canvas-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  /* Before/after toggle */
+  .toggle-wrap {
+    display: flex;
+    gap: 4px;
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 3px;
+  }
+
+  .toggle-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--text3);
+    font-size: 12px;
+    font-family: var(--font-sans);
+    padding: 5px 0;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .toggle-btn.active { background: var(--surface); color: var(--text); }
+
+  .footer { position: fixed; bottom: 0; left: 0; }
+</style>
+</head>
+<body>
+
+<div id="importheader"></div>
+
+<header>
+  <h1>Image Clipper</h1>
+  <span>Trim transparent edges from PNGs to tightest bounding box</span>
+</header>
+
+<div class="workspace">
+  <div class="sidebar">
+
+    <div>
+      <div class="section-label">Image</div>
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept="image/png,image/webp">
+        <span class="icon">⬆</span>
+        <p><strong>Drop PNG here</strong><br>or click to browse</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Padding</div>
+      <div class="range-group">
+        <div class="range-header">
+          <label>Extra padding</label>
+          <span class="range-val" id="paddingVal">0px</span>
+        </div>
+        <input type="range" id="paddingRange" min="0" max="64" value="0" step="1">
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Result</div>
+      <div class="info-block" id="infoBlock">
+        <div class="info-row"><span>Original</span><span class="info-val" id="infoOriginal">—</span></div>
+        <div class="info-row"><span>Clipped</span><span class="info-val" id="infoClipped">—</span></div>
+        <div class="info-row"><span>Saved</span><span class="info-val saved" id="infoSaved">—</span></div>
+      </div>
+      <button class="export-btn" id="exportBtn" disabled>Download PNG</button>
+    </div>
+
+  </div>
+
+  <div class="canvas-area">
+    <div class="placeholder" id="placeholder">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="4" width="56" height="56" rx="3" stroke="#555" stroke-width="1" stroke-dasharray="4 3"/>
+        <rect x="16" y="12" width="32" height="40" rx="3" stroke="#888" stroke-width="1.5"/>
+        <path d="M22 20 L22 44 M42 20 L42 44 M16 26 L48 26 M16 38 L48 38" stroke="#888" stroke-width="1" stroke-dasharray="2 2"/>
+      </svg>
+      <p>Upload a PNG to trim its transparent edges</p>
+    </div>
+    <div class="canvas-wrap" id="canvasWrap" style="display:none;">
+      <span class="canvas-meta" id="canvasMeta"></span>
+      <div class="toggle-wrap" id="toggleWrap">
+        <button class="toggle-btn" data-view="before">Before</button>
+        <button class="toggle-btn active" data-view="after">After</button>
+      </div>
+      <div class="canvas-checker">
+        <canvas id="mainCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const state = {
+  image: null,
+  bounds: null,   // { minX, minY, maxX, maxY }
+  padding: 0,
+  view: 'after',
+};
+
+function findBounds(ctx, w, h) {
+  const data = ctx.getImageData(0, 0, w, h).data;
+  let minX = w, minY = h, maxX = 0, maxY = 0;
+  let found = false;
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const alpha = data[(y * w + x) * 4 + 3];
+      if (alpha > 0) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+        found = true;
+      }
+    }
+  }
+
+  if (!found) return null;
+  return { minX, minY, maxX, maxY };
+}
+
+function clip() {
+  if (!state.image) return;
+
+  const img = state.image;
+  const srcCanvas = document.createElement('canvas');
+  srcCanvas.width = img.naturalWidth;
+  srcCanvas.height = img.naturalHeight;
+  const srcCtx = srcCanvas.getContext('2d');
+  srcCtx.drawImage(img, 0, 0);
+
+  state.bounds = findBounds(srcCtx, img.naturalWidth, img.naturalHeight);
+  render();
+}
+
+function render() {
+  if (!state.image || !state.bounds) return;
+
+  const img = state.image;
+  const { minX, minY, maxX, maxY } = state.bounds;
+  const pad = state.padding;
+
+  const canvas = document.getElementById('mainCanvas');
+  const ctx = canvas.getContext('2d');
+
+  if (state.view === 'before') {
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0);
+
+    // Draw crop box overlay
+    ctx.strokeStyle = 'rgba(163,11,0,0.8)';
+    ctx.lineWidth = Math.max(1, img.naturalWidth / 300);
+    ctx.setLineDash([6, 3]);
+    const bx = Math.max(0, minX - pad);
+    const by = Math.max(0, minY - pad);
+    const bw = Math.min(img.naturalWidth, maxX + pad + 1) - bx;
+    const bh = Math.min(img.naturalHeight, maxY + pad + 1) - by;
+    ctx.strokeRect(bx, by, bw, bh);
+    ctx.setLineDash([]);
+
+    document.getElementById('canvasMeta').textContent =
+      img.naturalWidth + ' × ' + img.naturalHeight + 'px (original)';
+
+  } else {
+    const cropX = Math.max(0, minX - pad);
+    const cropY = Math.max(0, minY - pad);
+    const cropW = Math.min(img.naturalWidth, maxX + pad + 1) - cropX;
+    const cropH = Math.min(img.naturalHeight, maxY + pad + 1) - cropY;
+
+    canvas.width = cropW;
+    canvas.height = cropH;
+    ctx.clearRect(0, 0, cropW, cropH);
+    ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+    document.getElementById('canvasMeta').textContent =
+      cropW + ' × ' + cropH + 'px (clipped)';
+
+    // Update info
+    const origPx = img.naturalWidth * img.naturalHeight;
+    const clipPx = cropW * cropH;
+    const pctSaved = Math.round((1 - clipPx / origPx) * 100);
+    document.getElementById('infoOriginal').textContent =
+      img.naturalWidth + ' × ' + img.naturalHeight;
+    document.getElementById('infoClipped').textContent = cropW + ' × ' + cropH;
+    document.getElementById('infoSaved').textContent =
+      pctSaved > 0 ? pctSaved + '% smaller' : 'No change';
+  }
+}
+
+function init() {
+  const dz = document.getElementById('dropZone');
+  dz.addEventListener('click', () => document.getElementById('fileInput').click());
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) loadFile(file);
+  });
+  document.getElementById('fileInput').addEventListener('change', e => {
+    if (e.target.files[0]) loadFile(e.target.files[0]);
+  });
+
+  document.addEventListener('paste', e => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) { loadFile(item.getAsFile()); break; }
+    }
+  });
+
+  document.getElementById('paddingRange').addEventListener('input', e => {
+    state.padding = parseInt(e.target.value);
+    document.getElementById('paddingVal').textContent = state.padding + 'px';
+    render();
+  });
+
+  document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.view = btn.dataset.view;
+      render();
+    });
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    const canvas = document.getElementById('mainCanvas');
+    // Always export the clipped version
+    const wasAfter = state.view === 'after';
+    if (!wasAfter) { state.view = 'after'; render(); }
+    canvas.toBlob(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'clipped.png';
+      a.click();
+      URL.revokeObjectURL(url);
+      if (!wasAfter) { state.view = 'before'; render(); }
+    }, 'image/png');
+  });
+}
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      state.image = img;
+      state.bounds = null;
+      document.getElementById('placeholder').style.display = 'none';
+      document.getElementById('canvasWrap').style.display = 'flex';
+      document.getElementById('exportBtn').disabled = false;
+      clip();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+init();
+</script>
+
+<div id="importfooter"></div>
+</body>
+</html>
