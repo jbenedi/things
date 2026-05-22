@@ -1,10 +1,11 @@
-# Tools
+# JB Tools
 
 A collection of HTML web tools built for artists and developers. Every tool runs entirely in the browser; no server, no build, no dependencies.
+Vanilla HTML, CSS, and JavaScript. A small number of CDN libraries are used where appropriate (JsBarcode, qrcodejs, JSZip, diff-match-patch).
 
 https://jbenedict.com/tools
 
-## Tools
+## Tools List
 
 ### Image
 | Tool | Description |
@@ -47,6 +48,3 @@ https://jbenedict.com/tools
 | Barcode Generator | Generate barcodes in Code 128, EAN, UPC, and more |
 | QR Code Generator | Generate QR codes from any URL or text string |
 | Encoder/Decoder | Encode/decode Base64, URL, Hex, Binary, and generate MD5/SHA hashes |
-
-
-Vanilla HTML, CSS, and JavaScript. A small number of CDN libraries are used where appropriate (JsBarcode, qrcodejs, JSZip, diff-match-patch).
