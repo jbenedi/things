@@ -59,7 +59,7 @@
 
   .sidebar {
     border-right: 1px solid var(--border);
-    padding: 20px 20px 90px 20px;
+    padding: 20px 20px 120px 20px;
     display: flex;
     flex-direction: column;
     gap: 20px;
@@ -264,10 +264,11 @@
   #mainCanvas {
     border-radius: 6px;
     box-shadow: 0 8px 40px rgba(0,0,0,0.6);
-    cursor: move;
-    max-width: calc(100vh - 115px - 53px - 70px - 96px);
-    max-height: calc(100vh - 115px - 53px - 70px - 96px);
     display: block;
+    max-width: calc(100vw - 280px - 64px);
+    max-height: calc(100vh - 115px - 53px - 70px - 96px);
+    width: auto;
+    height: auto;
   }
 
   .canvas-meta { font-family: var(--font-mono); font-size: 11px; color: var(--text3); }
@@ -564,7 +565,10 @@ function render() {
 
 function updatePreviewSize() {
   const canvas = document.getElementById('mainCanvas');
-  const displaySize = Math.min(PREVIEW_MAX, window.innerHeight - 300);
+  const area = document.getElementById('canvasArea');
+  const maxW = area.clientWidth - 64;
+  const maxH = area.clientHeight - 64 - 70;
+  const displaySize = Math.min(PREVIEW_MAX, maxW, maxH);
   canvas.style.width = displaySize + 'px';
   canvas.style.height = displaySize + 'px';
   document.getElementById('canvasMeta').textContent = '3000 × 3000px';
@@ -704,6 +708,7 @@ function loadFile(file) {
 }
 
 init();
+window.addEventListener('resize', () => { if (state.image) updatePreviewSize(); });
 </script>
 
 <div id="importfooter"></div>
