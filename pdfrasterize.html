@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF Rasterizer</title>
+<script src="https://jbenedict.com/assets/js/jquery.js"></script>
+<script src="https://jbenedict.com/assets/js/main.js" type="text/javascript" defer></script>
+<link rel="stylesheet" media="screen" href="https://jbenedict.com/assets/css/main.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --surface2: #1f1f1f;
+    --border: #2a2a2a;
+    --border2: #333;
+    --text: #e8e8e8;
+    --text2: #888;
+    --text3: #555;
+    --accent: #a30b00;
+    --accent-dim: #8a0900;
+    --radius: 6px;
+    --font-sans: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    padding-top: 115px;
+  }
+
+  header {
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  header h1 { font-size: 15px; font-weight: 500; letter-spacing: 0.02em; }
+  header span { font-size: 12px; color: var(--text3); font-family: var(--font-mono); }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: calc(100vh - 115px - 53px);
+  }
+
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 20px 20px 120px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    max-height: 100%;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+  .drop-zone {
+    border: 1px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    background: var(--surface);
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(163,11,0,0.04); }
+  .drop-zone input { display: none; }
+  .drop-zone .icon { font-size: 24px; color: var(--text3); margin-bottom: 8px; display: block; }
+  .drop-zone p { color: var(--text2); font-size: 12px; line-height: 1.5; }
+  .drop-zone p strong { color: var(--text); font-weight: 400; }
+
+  .size-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+  }
+
+  .size-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text2);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 8px 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .size-btn:hover { border-color: var(--border2); color: var(--text); }
+  .size-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(163,11,0,0.06); }
+
+  .info-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text2);
+  }
+  .info-val { font-family: var(--font-mono); font-size: 12px; color: var(--text); }
+
+  .export-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 16px;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.15s;
+    margin-top: 14px;
+  }
+  .export-btn:hover { background: var(--accent-dim); }
+  .export-btn:disabled { background: var(--border2); color: var(--text3); cursor: not-allowed; }
+
+  /* Canvas area */
+  .canvas-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 1px 1px, #1e1e1e 1px, transparent 0);
+    background-size: 24px 24px;
+    padding: 32px 32px calc(70px + 32px) 32px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-width: 0;
+    min-height: 0;
+    gap: 16px;
+  }
+
+  .placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: var(--text3);
+  }
+  .placeholder svg { opacity: 0.2; }
+  .placeholder p { font-size: 13px; text-align: center; line-height: 1.6; }
+
+  .pages-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .page-preview {
+    border-radius: 4px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    display: block;
+    max-width: calc(100vw - 280px - 64px);
+    background: #fff;
+  }
+
+  .page-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  /* Progress */
+  .progress-wrap {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    max-width: 360px;
+  }
+
+  .progress-label {
+    font-size: 12px;
+    color: var(--text2);
+    font-family: var(--font-mono);
+  }
+
+  .progress-bar {
+    width: 100%;
+    height: 3px;
+    background: var(--border2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.1s;
+    width: 0%;
+  }
+
+  .footer { position: fixed; bottom: 0; left: 0; }
+</style>
+</head>
+<body>
+
+<div id="importheader"></div>
+
+<header>
+  <h1>PDF Rasterizer</h1>
+  <span>Flatten PDFs to image-based, uneditable files</span>
+</header>
+
+<div class="workspace">
+  <div class="sidebar">
+
+    <div>
+      <div class="section-label">PDF File</div>
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept=".pdf,application/pdf">
+        <span class="icon">⬆</span>
+        <p><strong>Drop PDF here</strong><br>or click to browse</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Resolution</div>
+      <div class="size-grid">
+        <button class="size-btn" data-dpi="72">72 DPI<br><span style="font-size:9px;color:var(--text3);">screen</span></button>
+        <button class="size-btn active" data-dpi="150">150 DPI<br><span style="font-size:9px;color:var(--text3);">balanced</span></button>
+        <button class="size-btn" data-dpi="300">300 DPI<br><span style="font-size:9px;color:var(--text3);">print</span></button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Info</div>
+      <div class="info-block">
+        <div class="info-row"><span>Pages</span><span class="info-val" id="infoPages">—</span></div>
+        <div class="info-row"><span>File</span><span class="info-val" id="infoFile">—</span></div>
+      </div>
+      <button class="export-btn" id="exportBtn" disabled>Download Flattened PDF</button>
+    </div>
+
+  </div>
+
+  <div class="canvas-area" id="canvasArea">
+    <div class="placeholder" id="placeholder">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="10" y="4" width="36" height="48" rx="3" stroke="#888" stroke-width="1.5"/>
+        <path d="M36 4 L46 14" stroke="#888" stroke-width="1.5"/>
+        <rect x="36" y="4" width="10" height="10" rx="1" stroke="#888" stroke-width="1.5"/>
+        <line x1="18" y1="24" x2="38" y2="24" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="18" y1="32" x2="38" y2="32" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="18" y1="40" x2="30" y2="40" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M42 44 L56 58 M42 58 L56 44" stroke="#a30b00" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <p>Upload a PDF to flatten it</p>
+    </div>
+    <div class="progress-wrap" id="progressWrap">
+      <span class="progress-label" id="progressLabel">Processing…</span>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+    <div class="pages-wrap" id="pagesWrap" style="display:none;"></div>
+  </div>
+</div>
+
+<script>
+// Set PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+const state = {
+  pdfDoc: null,
+  dpi: 150,
+  filename: 'document',
+};
+
+const PT_PER_INCH = 72;
+
+function getScale() {
+  return state.dpi / PT_PER_INCH;
+}
+
+async function loadPDF(arrayBuffer) {
+  state.pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  document.getElementById('infoPages').textContent = state.pdfDoc.numPages;
+  document.getElementById('exportBtn').disabled = false;
+  await renderPreviews();
+}
+
+async function renderPreviews() {
+  const wrap = document.getElementById('pagesWrap');
+  wrap.innerHTML = '';
+  document.getElementById('placeholder').style.display = 'none';
+  document.getElementById('pagesWrap').style.display = 'flex';
+
+  const scale = Math.min(getScale(), 1); // previews at max 1x for speed
+  const numPages = state.pdfDoc.numPages;
+
+  for (let i = 1; i <= numPages; i++) {
+    const page = await state.pdfDoc.getPage(i);
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    canvas.className = 'page-preview';
+
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: ctx, viewport }).promise;
+
+    const label = document.createElement('span');
+    label.className = 'page-label';
+    label.textContent = `Page ${i} of ${numPages}`;
+
+    wrap.appendChild(label);
+    wrap.appendChild(canvas);
+  }
+}
+
+async function exportPDF() {
+  if (!state.pdfDoc) return;
+
+  const btn = document.getElementById('exportBtn');
+  btn.disabled = true;
+  btn.textContent = 'Processing…';
+
+  const progressWrap = document.getElementById('progressWrap');
+  const progressFill = document.getElementById('progressFill');
+  const progressLabel = document.getElementById('progressLabel');
+  progressWrap.style.display = 'flex';
+
+  const { jsPDF } = window.jspdf;
+  const numPages = state.pdfDoc.numPages;
+  const scale = getScale();
+
+  let pdf = null;
+
+  for (let i = 1; i <= numPages; i++) {
+    progressLabel.textContent = `Rasterizing page ${i} of ${numPages}…`;
+    progressFill.style.width = ((i - 1) / numPages * 100) + '%';
+
+    const page = await state.pdfDoc.getPage(i);
+    const viewport = page.getViewport({ scale });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(viewport.width);
+    canvas.height = Math.round(viewport.height);
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: ctx, viewport }).promise;
+
+    // Page size in points (PDF units)
+    const wPt = viewport.width / scale * (PT_PER_INCH / PT_PER_INCH);
+    const hPt = viewport.height / scale * (PT_PER_INCH / PT_PER_INCH);
+    const orientation = wPt > hPt ? 'l' : 'p';
+
+    if (!pdf) {
+      pdf = new jsPDF({
+        orientation,
+        unit: 'pt',
+        format: [wPt, hPt],
+        compress: true,
+      });
+    } else {
+      pdf.addPage([wPt, hPt], orientation);
+    }
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+    pdf.addImage(imgData, 'JPEG', 0, 0, wPt, hPt, '', 'FAST');
+
+    // Allow UI to breathe
+    await new Promise(r => setTimeout(r, 0));
+  }
+
+  progressFill.style.width = '100%';
+  progressLabel.textContent = 'Saving…';
+
+  await new Promise(r => setTimeout(r, 50));
+
+  pdf.save(state.filename + '-rasterized.pdf');
+
+  progressWrap.style.display = 'none';
+  btn.disabled = false;
+  btn.textContent = 'Download Flattened PDF';
+}
+
+function init() {
+  const dz = document.getElementById('dropZone');
+  dz.addEventListener('click', () => document.getElementById('fileInput').click());
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) loadFile(file);
+  });
+  document.getElementById('fileInput').addEventListener('change', e => {
+    if (e.target.files[0]) loadFile(e.target.files[0]);
+  });
+
+  document.querySelectorAll('.size-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.dpi = parseInt(btn.dataset.dpi);
+      if (state.pdfDoc) renderPreviews();
+    });
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', exportPDF);
+}
+
+function loadFile(file) {
+  state.filename = file.name.replace(/\.pdf$/i, '');
+  document.getElementById('infoFile').textContent = file.name.length > 20
+    ? file.name.slice(0, 18) + '…' : file.name;
+
+  const reader = new FileReader();
+  reader.onload = e => loadPDF(e.target.result);
+  reader.readAsArrayBuffer(file);
+}
+
+init();
+</script>
+
+<div id="importfooter"></div>
+</body>
+</html>
