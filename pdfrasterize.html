@@ -7,7 +7,13 @@
 <script src="https://jbenedict.com/assets/js/jquery.js"></script>
 <script src="https://jbenedict.com/assets/js/main.js" type="text/javascript" defer></script>
 <link rel="stylesheet" media="screen" href="https://jbenedict.com/assets/css/main.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script>
+  // Normalize the global — different builds expose different names
+  if (typeof pdfjsLib === 'undefined') {
+    window.pdfjsLib = window['pdfjs-dist/build/pdf'] || pdfjsLib;
+  }
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
@@ -186,7 +192,7 @@
     border-radius: 4px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.5);
     display: block;
-    max-width: calc(100vw - 280px - 64px);
+    max-width: min(calc(100vw - 280px - 64px), calc((100vh - 115px - 53px - 70px - 96px) * 0.85));
     background: #fff;
   }
 
@@ -300,7 +306,7 @@
 <script>
 // Set PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc =
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
 
 const state = {
   pdfDoc: null,
@@ -327,29 +333,28 @@ async function renderPreviews() {
   document.getElementById('placeholder').style.display = 'none';
   document.getElementById('pagesWrap').style.display = 'flex';
 
-  const scale = Math.min(getScale(), 1); // previews at max 1x for speed
+  const scale = Math.min(getScale(), 1);
   const numPages = state.pdfDoc.numPages;
 
-  for (let i = 1; i <= numPages; i++) {
-    const page = await state.pdfDoc.getPage(i);
-    const viewport = page.getViewport({ scale });
-    const canvas = document.createElement('canvas');
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    canvas.className = 'page-preview';
+  // Only preview the first page
+  const page = await state.pdfDoc.getPage(1);
+  const viewport = page.getViewport({ scale });
+  const canvas = document.createElement('canvas');
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  canvas.className = 'page-preview';
 
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    await page.render({ canvasContext: ctx, viewport }).promise;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  await page.render({ canvasContext: ctx, viewport }).promise;
 
-    const label = document.createElement('span');
-    label.className = 'page-label';
-    label.textContent = `Page ${i} of ${numPages}`;
+  const label = document.createElement('span');
+  label.className = 'page-label';
+  label.textContent = numPages > 1 ? `Page 1 of ${numPages} - ${numPages} pages total` : '1 page';
 
-    wrap.appendChild(label);
-    wrap.appendChild(canvas);
-  }
+  wrap.appendChild(label);
+  wrap.appendChild(canvas);
 }
 
 async function exportPDF() {
