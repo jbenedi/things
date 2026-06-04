@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Circle Cropper</title>
+<script src="https://jbenedict.com/assets/js/jquery.js"></script>
+<script src="https://jbenedict.com/assets/js/main.js" type="text/javascript" defer></script>
+<link rel="stylesheet" media="screen" href="https://jbenedict.com/assets/css/main.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --surface2: #1f1f1f;
+    --border: #2a2a2a;
+    --border2: #333;
+    --text: #e8e8e8;
+    --text2: #888;
+    --text3: #555;
+    --accent: #a30b00;
+    --accent-dim: #8a0900;
+    --radius: 6px;
+    --font-sans: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    padding-top: 115px;
+  }
+
+  header {
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  header h1 { font-size: 15px; font-weight: 500; letter-spacing: 0.02em; }
+  header span { font-size: 12px; color: var(--text3); font-family: var(--font-mono); }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: calc(100vh - 115px - 53px);
+  }
+
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 20px 20px 90px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    max-height: 100%;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+  .drop-zone {
+    border: 1px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    background: var(--surface);
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(163,11,0,0.04); }
+  .drop-zone input { display: none; }
+  .drop-zone .icon { font-size: 24px; color: var(--text3); margin-bottom: 8px; display: block; }
+  .drop-zone p { color: var(--text2); font-size: 12px; line-height: 1.5; }
+  .drop-zone p strong { color: var(--text); font-weight: 400; }
+
+  .range-group { display: flex; flex-direction: column; gap: 6px; }
+  .range-header { display: flex; justify-content: space-between; align-items: center; }
+  .range-header label { font-size: 12px; color: var(--text2); }
+  .range-val { font-family: var(--font-mono); font-size: 12px; color: var(--accent); min-width: 36px; text-align: right; }
+
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 2px;
+    background: var(--border2); outline: none; border-radius: 2px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 14px; height: 14px;
+    background: var(--accent); border-radius: 50%; cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px;
+    background: var(--accent); border-radius: 50%; cursor: pointer; border: none;
+  }
+
+  .info-block { display: flex; flex-direction: column; gap: 6px; }
+  .info-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text2); }
+  .info-val { font-family: var(--font-mono); font-size: 12px; color: var(--text); }
+
+  .export-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 16px;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.15s;
+    margin-top: 14px;
+  }
+  .export-btn:hover { background: var(--accent-dim); }
+  .export-btn:disabled { background: var(--border2); color: var(--text3); cursor: not-allowed; }
+
+  /* Canvas area */
+  .canvas-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 1px 1px, #1e1e1e 1px, transparent 0);
+    background-size: 24px 24px;
+    padding: 32px 32px calc(70px + 32px) 32px;
+    overflow: hidden;
+    min-width: 0;
+    min-height: 0;
+    position: relative;
+  }
+
+  .placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: var(--text3);
+  }
+  .placeholder svg { opacity: 0.2; }
+  .placeholder p { font-size: 13px; text-align: center; line-height: 1.6; }
+
+  .canvas-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .canvas-meta { font-family: var(--font-mono); font-size: 11px; color: var(--text3); }
+
+  /* Crop container */
+  .crop-container {
+    position: relative;
+    display: inline-block;
+    cursor: move;
+    flex-shrink: 0;
+  }
+
+  .crop-container img {
+    display: block;
+    user-select: none;
+    pointer-events: none;
+    border-radius: 4px;
+  }
+
+  /* Circle overlay */
+  .circle-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .circle-overlay svg {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+  }
+
+  .footer { position: fixed; bottom: 0; left: 0; }
+</style>
+</head>
+<body>
+
+<div id="importheader"></div>
+
+<header>
+  <h1>Circle Cropper</h1>
+  <span>Crop images to a circle with a transparent background</span>
+</header>
+
+<div class="workspace">
+  <div class="sidebar">
+
+    <div>
+      <div class="section-label">Image</div>
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept="image/*">
+        <span class="icon">⬆</span>
+        <p><strong>Drop image here</strong><br>or click to browse</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Circle Size</div>
+      <div class="range-group">
+        <div class="range-header">
+          <label>Radius</label>
+          <span class="range-val" id="radiusVal">90%</span>
+        </div>
+        <input type="range" id="radiusRange" min="10" max="100" value="90" step="1">
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Position</div>
+      <div class="range-group" style="margin-bottom:10px;">
+        <div class="range-header">
+          <label>Horizontal</label>
+          <span class="range-val" id="xVal">50%</span>
+        </div>
+        <input type="range" id="xRange" min="0" max="100" value="50" step="1">
+      </div>
+      <div class="range-group">
+        <div class="range-header">
+          <label>Vertical</label>
+          <span class="range-val" id="yVal">50%</span>
+        </div>
+        <input type="range" id="yRange" min="0" max="100" value="50" step="1">
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Output Size</div>
+      <div class="info-block">
+        <div class="info-row"><span>Diameter</span><span class="info-val" id="infoSize">—</span></div>
+      </div>
+      <button class="export-btn" id="exportBtn" disabled>Download PNG</button>
+    </div>
+
+  </div>
+
+  <div class="canvas-area" id="canvasArea">
+    <div class="placeholder" id="placeholder">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="4" width="56" height="56" rx="4" stroke="#888" stroke-width="1.5" stroke-dasharray="4 3"/>
+        <circle cx="32" cy="32" r="22" stroke="#888" stroke-width="1.5"/>
+        <circle cx="22" cy="22" r="5" stroke="#888" stroke-width="1.5"/>
+        <path d="M4 42 L18 28 L28 38 L38 22 L60 42" stroke="#888" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <p>Upload an image to crop it to a circle</p>
+    </div>
+    <div class="canvas-wrap" id="canvasWrap" style="display:none;">
+      <span class="canvas-meta" id="canvasMeta"></span>
+      <div class="crop-container" id="cropContainer">
+        <img id="previewImg" src="" alt="">
+        <div class="circle-overlay" id="circleOverlay">
+          <svg id="overlaySvg" xmlns="http://www.w3.org/2000/svg">
+            <!-- dark mask outside circle -->
+            <defs>
+              <mask id="circleMask">
+                <rect width="100%" height="100%" fill="white"/>
+                <circle id="maskCircle" fill="black"/>
+              </mask>
+            </defs>
+            <rect width="100%" height="100%" fill="rgba(0,0,0,0.55)" mask="url(#circleMask)"/>
+            <!-- circle border -->
+            <circle id="borderCircle" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" stroke-dasharray="6 3"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const state = {
+  image: null,
+  radius: 90,   // % of min(w,h)/2
+  cx: 50,       // % of image width
+  cy: 50,       // % of image height
+  displayW: 0,
+  displayH: 0,
+};
+
+const MAX_PREVIEW = 600;
+
+function updateOverlay() {
+  const img = document.getElementById('previewImg');
+  const W = state.displayW;
+  const H = state.displayH;
+
+  const minDim = Math.min(W, H);
+  const r = (state.radius / 100) * (minDim / 2);
+  const cx = (state.cx / 100) * W;
+  const cy = (state.cy / 100) * H;
+
+  document.getElementById('maskCircle').setAttribute('cx', cx);
+  document.getElementById('maskCircle').setAttribute('cy', cy);
+  document.getElementById('maskCircle').setAttribute('r', r);
+
+  document.getElementById('borderCircle').setAttribute('cx', cx);
+  document.getElementById('borderCircle').setAttribute('cy', cy);
+  document.getElementById('borderCircle').setAttribute('r', r);
+
+  const diameter = Math.round(r * 2 * (state.image.naturalWidth / W));
+  document.getElementById('infoSize').textContent = diameter + ' × ' + diameter + 'px';
+  document.getElementById('canvasMeta').textContent = 'Drag sliders to reposition';
+}
+
+function exportImage() {
+  const img = state.image;
+  const W = img.naturalWidth;
+  const H = img.naturalHeight;
+  const minDim = Math.min(W, H);
+  const r = Math.round((state.radius / 100) * (minDim / 2));
+  const cx = Math.round((state.cx / 100) * W);
+  const cy = Math.round((state.cy / 100) * H);
+
+  const diameter = r * 2;
+  const canvas = document.createElement('canvas');
+  canvas.width = diameter;
+  canvas.height = diameter;
+  const ctx = canvas.getContext('2d');
+
+  // Clip to circle
+  ctx.beginPath();
+  ctx.arc(r, r, r, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Draw image offset so circle center maps to canvas center
+  ctx.drawImage(img, -(cx - r), -(cy - r));
+
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'circle-crop.png';
+    a.click();
+    URL.revokeObjectURL(url);
+  }, 'image/png');
+}
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      state.image = img;
+
+      // Scale preview
+      const area = document.getElementById('canvasArea');
+      const maxW = area.clientWidth - 64;
+      const maxH = area.clientHeight - 96;
+      const scale = Math.min(1, maxW / img.naturalWidth, maxH / img.naturalHeight, MAX_PREVIEW / Math.max(img.naturalWidth, img.naturalHeight));
+      state.displayW = Math.round(img.naturalWidth * scale);
+      state.displayH = Math.round(img.naturalHeight * scale);
+
+      const previewImg = document.getElementById('previewImg');
+      previewImg.src = e.target.result;
+      previewImg.style.width = state.displayW + 'px';
+      previewImg.style.height = state.displayH + 'px';
+
+      document.getElementById('overlaySvg').setAttribute('viewBox', `0 0 ${state.displayW} ${state.displayH}`);
+
+      document.getElementById('placeholder').style.display = 'none';
+      document.getElementById('canvasWrap').style.display = 'flex';
+      document.getElementById('exportBtn').disabled = false;
+
+      updateOverlay();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function init() {
+  const dz = document.getElementById('dropZone');
+  dz.addEventListener('click', () => document.getElementById('fileInput').click());
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) loadFile(file);
+  });
+  document.getElementById('fileInput').addEventListener('change', e => {
+    if (e.target.files[0]) loadFile(e.target.files[0]);
+  });
+  document.addEventListener('paste', e => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) { loadFile(item.getAsFile()); break; }
+    }
+  });
+
+  document.getElementById('radiusRange').addEventListener('input', e => {
+    state.radius = parseInt(e.target.value);
+    document.getElementById('radiusVal').textContent = state.radius + '%';
+    updateOverlay();
+  });
+
+  document.getElementById('xRange').addEventListener('input', e => {
+    state.cx = parseInt(e.target.value);
+    document.getElementById('xVal').textContent = state.cx + '%';
+    updateOverlay();
+  });
+
+  document.getElementById('yRange').addEventListener('input', e => {
+    state.cy = parseInt(e.target.value);
+    document.getElementById('yVal').textContent = state.cy + '%';
+    updateOverlay();
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', exportImage);
+}
+
+init();
+</script>
+
+<div id="importfooter"></div>
+</body>
+</html>
