@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF Combiner</title>
+<script src="https://jbenedict.com/assets/js/jquery.js"></script>
+<script src="https://jbenedict.com/assets/js/main.js" type="text/javascript" defer></script>
+<link rel="stylesheet" media="screen" href="https://jbenedict.com/assets/css/main.css">
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --surface2: #1f1f1f;
+    --border: #2a2a2a;
+    --border2: #333;
+    --text: #e8e8e8;
+    --text2: #888;
+    --text3: #555;
+    --accent: #a30b00;
+    --accent-dim: #8a0900;
+    --radius: 6px;
+    --font-sans: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    padding-top: 115px;
+  }
+
+  header {
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  header h1 { font-size: 15px; font-weight: 500; letter-spacing: 0.02em; }
+  header span { font-size: 12px; color: var(--text3); font-family: var(--font-mono); }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: calc(100vh - 115px - 53px);
+  }
+
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 20px 20px 120px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    max-height: 100%;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+  .drop-zone {
+    border: 1px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 20px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    background: var(--surface);
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(163,11,0,0.04); }
+  .drop-zone input { display: none; }
+  .drop-zone .icon { font-size: 20px; color: var(--text3); margin-bottom: 6px; display: block; }
+  .drop-zone p { color: var(--text2); font-size: 12px; line-height: 1.5; }
+  .drop-zone p strong { color: var(--text); font-weight: 400; }
+
+  /* File list */
+  .file-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .file-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: grab;
+    transition: border-color 0.15s, background 0.15s;
+    user-select: none;
+  }
+
+  .file-item:active { cursor: grabbing; }
+  .file-item.dragging { opacity: 0.4; }
+  .file-item.drag-over { border-color: var(--accent); background: rgba(163,11,0,0.06); }
+
+  .file-num {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text3);
+    min-width: 16px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .file-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+    color: var(--text3);
+  }
+
+  .file-name {
+    font-size: 11px;
+    color: var(--text);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-mono);
+  }
+
+  .file-pages {
+    font-size: 10px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+    flex-shrink: 0;
+  }
+
+  .file-remove {
+    background: none;
+    border: none;
+    color: var(--text3);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+    transition: color 0.15s;
+    flex-shrink: 0;
+  }
+  .file-remove:hover { color: var(--accent); }
+
+  .drag-handle {
+    color: var(--text3);
+    font-size: 12px;
+    cursor: grab;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text2);
+  }
+  .info-val { font-family: var(--font-mono); font-size: 12px; color: var(--text); }
+
+  .export-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 16px;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.15s;
+    margin-top: 14px;
+  }
+  .export-btn:hover { background: var(--accent-dim); }
+  .export-btn:disabled { background: var(--border2); color: var(--text3); cursor: not-allowed; }
+
+  /* Canvas area */
+  .canvas-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 1px 1px, #1e1e1e 1px, transparent 0);
+    background-size: 24px 24px;
+    padding: 32px 32px calc(70px + 32px) 32px;
+    gap: 16px;
+    overflow-y: auto;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: var(--text3);
+  }
+  .placeholder svg { opacity: 0.2; }
+  .placeholder p { font-size: 13px; text-align: center; line-height: 1.6; }
+
+  .summary-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    max-width: 400px;
+    width: 100%;
+  }
+
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px 32px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+
+  .summary-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+  }
+
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--text2);
+  }
+
+  .summary-val {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  .summary-files {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 4px;
+  }
+
+  .summary-file-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+  }
+
+  .summary-file-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+
+  /* Progress */
+  .progress-wrap {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    max-width: 360px;
+  }
+  .progress-label { font-size: 12px; color: var(--text2); font-family: var(--font-mono); }
+  .progress-bar { width: 100%; height: 3px; background: var(--border2); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.1s; width: 0%; }
+
+  .footer { position: fixed; bottom: 0; left: 0; }
+</style>
+</head>
+<body>
+
+<div id="importheader"></div>
+
+<header>
+  <h1>PDF Combiner</h1>
+  <span>Merge multiple PDFs into one</span>
+</header>
+
+<div class="workspace">
+  <div class="sidebar">
+
+    <div>
+      <div class="section-label">PDFs <span id="fileCount" style="color:var(--text3); font-family:var(--font-mono);">0</span></div>
+      <div class="file-list" id="fileList"></div>
+      <div class="drop-zone" id="dropZone" style="margin-top:8px;">
+        <input type="file" id="fileInput" accept=".pdf,application/pdf" multiple>
+        <span class="icon">+</span>
+        <p><strong>Add PDFs</strong><br>drag to reorder</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="info-row"><span>Total pages</span><span class="info-val" id="totalPages">—</span></div>
+      <button class="export-btn" id="exportBtn" disabled>Download Combined PDF</button>
+    </div>
+
+  </div>
+
+  <div class="canvas-area" id="canvasArea">
+    <div class="placeholder" id="placeholder">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="6" y="14" width="24" height="32" rx="3" stroke="#888" stroke-width="1.5"/>
+        <rect x="20" y="8" width="24" height="32" rx="3" stroke="#888" stroke-width="1.5" stroke-dasharray="3 2"/>
+        <rect x="34" y="18" width="24" height="32" rx="3" stroke="#888" stroke-width="1.5" stroke-dasharray="3 2"/>
+        <path d="M26 46 L32 52 L38 46" stroke="#a30b00" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="32" y1="40" x2="32" y2="52" stroke="#a30b00" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <p>Add PDFs to combine them</p>
+    </div>
+
+    <div class="progress-wrap" id="progressWrap">
+      <span class="progress-label" id="progressLabel">Combining...</span>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+
+    <div class="summary-wrap" id="summaryWrap" style="display:none;">
+      <div class="summary-card" id="summaryCard">
+        <div class="summary-title">Ready to combine</div>
+        <div class="summary-row"><span>Files</span><span class="summary-val" id="sumFiles">—</span></div>
+        <div class="summary-row"><span>Total pages</span><span class="summary-val" id="sumPages">—</span></div>
+        <div class="summary-files" id="sumFileList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const state = {
+  files: [], // { name, arrayBuffer, pageCount }
+};
+
+let dragSrcIndex = null;
+
+// ── File loading ──────────────────────────────────────────────────
+
+async function getPageCount(arrayBuffer) {
+  try {
+    const pdf = await PDFLib.PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+    return pdf.getPageCount();
+  } catch { return '?'; }
+}
+
+async function addFiles(fileList) {
+  for (const file of Array.from(fileList)) {
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) continue;
+    const buf = await file.arrayBuffer();
+    const pageCount = await getPageCount(buf);
+    state.files.push({ name: file.name, arrayBuffer: buf, pageCount });
+  }
+  renderFileList();
+  updateSummary();
+}
+
+// ── Render ────────────────────────────────────────────────────────
+
+function renderFileList() {
+  const list = document.getElementById('fileList');
+  list.innerHTML = '';
+  document.getElementById('fileCount').textContent = state.files.length;
+
+  state.files.forEach((f, i) => {
+    const item = document.createElement('div');
+    item.className = 'file-item';
+    item.draggable = true;
+    item.dataset.index = i;
+
+    item.innerHTML = `
+      <span class="drag-handle">⠿</span>
+      <span class="file-num">${i + 1}</span>
+      <span class="file-icon">📄</span>
+      <span class="file-name" title="${f.name}">${f.name}</span>
+      <span class="file-pages">${f.pageCount}p</span>
+      <button class="file-remove" data-index="${i}">×</button>
+    `;
+
+    item.addEventListener('dragstart', e => {
+      dragSrcIndex = i;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    item.addEventListener('dragend', () => item.classList.remove('dragging'));
+    item.addEventListener('dragover', e => { e.preventDefault(); item.classList.add('drag-over'); });
+    item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      item.classList.remove('drag-over');
+      if (dragSrcIndex === null || dragSrcIndex === i) return;
+      const moved = state.files.splice(dragSrcIndex, 1)[0];
+      state.files.splice(i, 0, moved);
+      dragSrcIndex = null;
+      renderFileList();
+      updateSummary();
+    });
+
+    item.querySelector('.file-remove').addEventListener('click', () => {
+      state.files.splice(i, 1);
+      renderFileList();
+      updateSummary();
+    });
+
+    list.appendChild(item);
+  });
+}
+
+function updateSummary() {
+  const n = state.files.length;
+  const totalPages = state.files.reduce((sum, f) => sum + (typeof f.pageCount === 'number' ? f.pageCount : 0), 0);
+  document.getElementById('totalPages').textContent = totalPages || '—';
+  document.getElementById('exportBtn').disabled = n < 2;
+
+  const summaryWrap = document.getElementById('summaryWrap');
+  const placeholder = document.getElementById('placeholder');
+
+  if (n === 0) {
+    summaryWrap.style.display = 'none';
+    placeholder.style.display = 'flex';
+    return;
+  }
+
+  placeholder.style.display = 'none';
+  summaryWrap.style.display = 'flex';
+
+  document.getElementById('sumFiles').textContent = n;
+  document.getElementById('sumPages').textContent = totalPages + ' total';
+
+  const fileListEl = document.getElementById('sumFileList');
+  fileListEl.innerHTML = state.files.map((f, i) =>
+    `<div class="summary-file-row">
+      <div class="summary-file-dot"></div>
+      <span>${i + 1}. ${f.name} (${f.pageCount}p)</span>
+    </div>`
+  ).join('');
+}
+
+// ── Export ────────────────────────────────────────────────────────
+
+async function exportCombined() {
+  if (state.files.length < 2) return;
+
+  const btn = document.getElementById('exportBtn');
+  btn.disabled = true;
+  btn.textContent = 'Combining...';
+
+  const progressWrap = document.getElementById('progressWrap');
+  const progressFill = document.getElementById('progressFill');
+  const progressLabel = document.getElementById('progressLabel');
+  progressWrap.style.display = 'flex';
+
+  const merged = await PDFLib.PDFDocument.create();
+
+  for (let i = 0; i < state.files.length; i++) {
+    progressLabel.textContent = `Adding ${state.files[i].name}...`;
+    progressFill.style.width = (i / state.files.length * 100) + '%';
+
+    const donor = await PDFLib.PDFDocument.load(state.files[i].arrayBuffer, { ignoreEncryption: true });
+    const pages = await merged.copyPages(donor, donor.getPageIndices());
+    pages.forEach(p => merged.addPage(p));
+    await new Promise(r => setTimeout(r, 0));
+  }
+
+  progressFill.style.width = '100%';
+  progressLabel.textContent = 'Saving...';
+  await new Promise(r => setTimeout(r, 50));
+
+  const bytes = await merged.save();
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'combined.pdf';
+  a.click();
+  URL.revokeObjectURL(url);
+
+  progressWrap.style.display = 'none';
+  btn.disabled = false;
+  btn.textContent = 'Download Combined PDF';
+}
+
+// ── Init ──────────────────────────────────────────────────────────
+
+function init() {
+  const dz = document.getElementById('dropZone');
+  dz.addEventListener('click', () => document.getElementById('fileInput').click());
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('dragover');
+    addFiles(e.dataTransfer.files);
+  });
+  document.getElementById('fileInput').addEventListener('change', e => {
+    addFiles(e.target.files);
+    e.target.value = '';
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', exportCombined);
+}
+
+init();
+</script>
+
+<div id="importfooter"></div>
+</body>
+</html>
