@@ -14,6 +14,7 @@ https://jbenedict.com/tools
 | Seamless Scroll Generator | Split a wide image into slices for Instagram carousel scrolls |
 | Social Media Cropper | Crop images to preset aspect ratios for Instagram, Bluesky, and Threads |
 | Watermarker | Overlay an image watermark onto photos with adjustable opacity and position |
+| Circle Cropper | Crop images to a circle with a transparent background for profile pictures |
 
 ### Color
 | Tool | Description |
@@ -34,6 +35,7 @@ https://jbenedict.com/tools
 | Image Converter | Convert and resize images between PNG, JPG, and WebP |
 | Paste To Download | Paste an image from clipboard and instantly download it |
 | SVG to PNG | Convert SVGs to high quality PNGs at 1×, 2×, or 4× scale |
+| Playlist Cover Maker | Create Spotify playlist covers with custom text overlays and auto color suggestions |
 
 ### Text
 | Tool | Description |
@@ -41,6 +43,9 @@ https://jbenedict.com/tools
 | Text Difference | Paste two text blocks and see a highlighted diff |
 | Word Counter | Count words, characters, sentences, paragraphs, and reading time |
 | Text Scratchpad | Freeform scratchpad with case conversion, sorting, find and replace |
+| PDF Rasterizer | Flatten PDFs to image-based, uneditable files - strips fonts, text layers, and metadata |
+| PDF/PNG Converter | Convert PDFs to PNG images or combine PNG images into a PDF |
+| PDF Combiner | Merge multiple PDFs into one - drag to reorder before combining |
 
 ### Code & Data
 | Tool | Description |
@@ -48,3 +53,5 @@ https://jbenedict.com/tools
 | Barcode Generator | Generate barcodes in Code 128, EAN, UPC, and more |
 | QR Code Generator | Generate QR codes from any URL or text string |
 | Encoder/Decoder | Encode/decode Base64, URL, Hex, Binary, and generate MD5/SHA hashes |
+| Time Converter | Convert Unix timestamps, timezones, calculate durations, and humanize time |
+| Hacker Typer | Type anything and look like you're hacking into a mainframe |
